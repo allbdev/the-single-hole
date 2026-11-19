@@ -1,0 +1,128 @@
+# Roadmap — Um Buraco Só
+
+> Tasks **in order**. Work top to bottom; move to the next phase only when the current phase's exit criteria are met.
+> **The two risky things get proven first:** that one shared number stays correct and live with many clients, and that the realistic hole runs on a mid-range phone. Nothing pretty gets built until both pass.
+> Then **the whole game** (every screen on the canvas, spoons, countries, replay, seasons), then hardening and the load-test write-up, then launch. Everything in `GAME_PLAN.md` ships at launch.
+> Source of truth: the design canvas and `GAME_PLAN.md`. Project rules in `CLAUDE.md`. Things only the developer can do in `TODO_FOR_YOU.md`.
+
+**Language rule:** player-facing text is **English by default with a PT-BR toggle**, both always complete (`src/i18n/`). Code, comments and docs are in English. Quoted lines below are the PT-BR text from the canvas.
+
+**Definition of done:** a task is `[x]` only when it's implemented **and covered by passing tests** (see `CLAUDE.md`), and the design canvas still matches.
+
+**Push rule:** run the `security-audit` skill before every push (see `CLAUDE.md`).
+
+**Targets (from `GAME_PLAN.md`):** 2 to 4 weekends in total. Estimates, not measurements.
+
+**Legend:** `[ ]` todo · `[~]` in progress · `[x]` done
+
+---
+
+## Phase 0 · Setup
+
+1. [ ] Backend platform: compare Cloudflare Durable Objects, PartyKit and Node `ws` on a small VM on current free tiers, WebSocket limits and price at scale; write the numbers and the choice in `CLAUDE.md` (you create the account: `TODO_FOR_YOU.md`)
+2. [x] `git init`, `main` branch, origin `https://github.com/allbdev/the-single-hole.git`, `.gitignore`, `.gitattributes` (Git LFS for images, 3D assets, fonts)
+3. [ ] Scaffold: Vite + TypeScript strict, ESLint + Prettier, `src/` `server/` `shared/` `tests/` `e2e/` `load/` `tools/`; `npm run check` = typecheck + lint + Vitest; MIT `LICENSE`
+4. [ ] Vitest with a first test per side (client, server, shared); Playwright installed with an empty smoke test
+5. [ ] GitHub Actions: `check`, `e2e`, `build` on every push and PR
+6. [ ] Fonts: Archivo (wide, for titles and sentences) and IBM Plex Mono (numbers), self-hosted, OFL, full PT-BR accents
+7. [ ] Design tokens from the art direction board in one CSS file (`src/ui/tokens.css`)
+
+**Exit:** repo is up, `npm run check` passes locally and in CI.
+
+---
+
+## Phase A · Spikes (kill tests)
+
+> Two questions, answered with no art. If either answer is "no", stop and rethink before Phase B.
+
+### A1 · The shared number
+8. [ ] `shared/protocol.ts`: versioned messages (`hello`, `dig` batch, `state` broadcast, `event` for the feed), encode/decode, validation, size limits
+9. [ ] `shared/depth.ts`: scoops → meters with a scale per layer calibrated to the canvas (9.381.220 scoops = 8.919,4 m; 13.412.006 = 12.742 km), meters → layer
+10. [ ] `server/room.ts` (pure): add batches, cap per connection, count players, emit a broadcast on a tick; time passed in
+11. [ ] Local adapter (Node `ws`) so the room runs with `npm run dev`
+12. [ ] `src/core/batcher.ts` and `src/core/reconcile.ts`: batch every 250–500 ms, optimistic total, ease toward the server, never go backwards
+13. [ ] A plain page: the depth, the player count, a button. Two tabs dig and both numbers agree
+14. [ ] A quick k6 run against the local room: how many connections before broadcasts lag past 1 s? Write the number in `load/README.md`
+
+### A2 · The hole on a phone
+15. [ ] three.js gray-box hole: displaced ground mesh, a dark shaft, instanced grass, one steel spoon with a sky reflection
+16. [ ] Quality presets (phone: fewer blades, no depth of field, pixel ratio ≤ 2); picked by device, overridable with a URL flag for testing
+17. [ ] Measure on a mid-range phone and a laptop: fps, first paint, JS size
+
+**Exit:** the number stays correct across tabs and reconnects, the local room survives a few hundred connections, and the hole holds 30 fps on a mid-range phone.
+
+---
+
+## Phase B · Systems
+
+18. [ ] `shared/data/layers.ts`: the eight layers with depths and a line in both languages; data tests
+19. [ ] `shared/data/spoons.ts`: the eight spoons with unlock thresholds; data tests
+20. [ ] i18n: `t()` helper, `en.ts` and `pt-BR.ts`, English by default, toggle remembered; test that both locales have every key
+21. [ ] `src/core/format.ts`: depths, counts, percentages and durations per locale (`8,919.4 m` / `8.919,4 m`, "5 anos, 41 dias")
+22. [ ] Your own scoop count and unlocked spoons in `localStorage` (survives reloads, tolerates a corrupt value); spoon picker
+23. [ ] Reconnect with backoff; scoops dug while offline are sent once on reconnect (capped)
+24. [ ] Persistence: snapshot every few seconds and on shutdown, restore on start, refuse to silently reset to zero
+25. [ ] Countries: country code from the platform's request headers, per-country scoop totals and player counts in the room; never cities, never stored with an IP
+26. [ ] Feed events from the server (a country joined with a spoon, "+1.000 m em 4 min", a country's 300 in a row, "Alguém achou um osso"), rendered from templates in both languages
+27. [ ] Activity log of the last minute (aggregated per tick, no identities) for the replay
+28. [ ] Layer timing: when the world entered each layer and how long it took
+29. [ ] Seasons in the room: arrival at 12.742 km closes the season, archives it (totals, duration, per-country, date) in the hall of fame, marks who was online for the golden spoon, starts a new hole at 0
+30. [ ] Balance test: at an assumed player count, a season lasts about "5 anos, 41 dias" and the canvas numbers hold
+
+**Exit:** every system has tests and runs on the local room.
+
+---
+
+## Phase C · Screens (match each canvas board)
+
+31. [ ] Landing (board 1): the hole, world depth, live count, PT/EN, "Pegar uma colher", "Ver o corte", "sem cadastro · grátis · código aberto"
+32. [ ] Dig view (board 2): looking down the hole, other players' spoons planted around the rim with country tag and scoops, the tape measure, the feed, your scoops, "Clique no buraco ou aperte espaço para cavar", Compartilhar
+33. [ ] Juice: dirt puff per scoop, a small spoon motion, a soft sound after the first click (toggle in the corner), reduced motion respected
+34. [ ] Spoon models: the eight materials (mirror steel, brushed steel, wood, plastic, tarnished silver, enamel, bent, gold), readable at small size
+35. [ ] Cross-section (board 3): the cut block with the eight layer materials, "ESTAMOS AQUI", % of the way to Japan, when the current layer started
+36. [ ] World (board 4): the globe with dots per country, "Quem está cavando" per-country list, Brazil → Japan bar, ETA at this week's pace
+37. [ ] New layer reached (board 5): the milestone card with the layer's core, depth, how long it took, how much you dug, its line
+38. [ ] Share card (board 6): 1200 × 630 from numbers only; copy image, copy link, download PNG; text fallback when image copy isn't supported
+39. [ ] Quiet hours (board 7): lighting follows the real time of day (night lantern look), local time shown, "while you were away" with the meters dug since your last visit, the replay when few people are online
+40. [ ] Season end (board 8): the arrival in the Kyoto rock garden, season totals, your scoops, "Ver o mural" (hall of fame), "Cavar o próximo", the golden spoon for those online
+41. [ ] Mobile (Mobile page): the three views portrait, one thumb, tap to dig, share sheet
+42. [ ] Link to the Steam page
+43. [ ] Open Graph tags and a static preview image so a pasted link shows the hole
+44. [ ] Board renders from the game (`tools/designs/`): replace the canvas images with real screenshots, re-export `/designs`
+45. [ ] Playwright smoke: open, dig, depth goes up, switch tabs, share dialog opens
+
+**Exit:** a friend opens the link on their phone, digs, sees others' spoons, reaches a milestone and a season end (on a test room) and shares the card without help.
+
+---
+
+## Phase D · Hardening and the write-up
+
+46. [ ] Per-IP caps alongside per-connection caps; connection cap per room; drop and count bad messages
+47. [ ] Abuse tests: oversized batches, floods, malformed JSON, many connections from one IP, replayed messages, a forged country
+48. [ ] Deploy the room to the chosen platform (adapter in `server/adapters/`), client to a static host; deploy from CI on push to `main`
+49. [ ] Load test against the deployed room with k6: connections held, broadcast latency, where it breaks, what it costs; results in `load/` and the README
+50. [ ] Monitoring: an uptime check and the room's own counters (players, scoops/s, dropped messages), no personal data
+51. [ ] Lighthouse in CI with the performance budget from `CLAUDE.md`
+52. [ ] README write-up: architecture, the interesting problems (reconciliation, rate limiting, persistence, seasons), load-test numbers, trade-offs
+53. [ ] Full security audit of the repo before it goes public
+
+**Exit:** the deployed room survives the load test, and the README explains it.
+
+---
+
+## Phase E · Launch
+
+54. [ ] Domain pointed at the static host; HTTPS; `[SEU DOMÍNIO]` on the share card replaced
+55. [ ] Posts: short clip of the hole and the share card, in English and PT-BR (`marketing/`)
+56. [ ] Playtest with 5+ people at once on phones; fix what confuses them
+57. [ ] Go public: repo, link, posts
+
+**Exit:** it's live, and the repo is the portfolio piece.
+
+---
+
+## Out of scope (decided)
+
+- Accounts, names, chat, anything players type: nothing to moderate.
+- Ads, payments, personal data storage.
+- Cities or any location finer than a country.
