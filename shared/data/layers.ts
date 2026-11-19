@@ -16,7 +16,7 @@ export interface LayerData {
   joke: { en: string; "pt-BR": string };
   startScoops: number;
   startMeters: number;
-  /** Base colors for the procedural material and the core sample (light to dark). */
+  /** Base colors for the procedural material and the core sample (as drawn on the Section board). */
   palette: [string, string, string];
 }
 
@@ -92,7 +92,7 @@ export const LAYERS: readonly LayerData[] = [
     },
     startScoops: 9_660_586,
     startMeters: 10_000,
-    palette: ["#c79a62", "#9a7448", "#5e4a33"],
+    palette: ["#6f93bd", "#45698f", "#233a55"],
   },
   {
     id: "mantle",
@@ -104,7 +104,7 @@ export const LAYERS: readonly LayerData[] = [
     },
     startScoops: 10_160_586,
     startMeters: 35_000,
-    palette: ["#6f8a4e", "#4b6233", "#2b3a1e"],
+    palette: ["#ffb04a", "#5a2414", "#1f0d09"],
   },
   {
     id: "core",
@@ -116,7 +116,7 @@ export const LAYERS: readonly LayerData[] = [
     },
     startScoops: 12_070_586,
     startMeters: 2_900_000,
-    palette: ["#ffb347", "#d2582a", "#6b2210"],
+    palette: ["#ffc061", "#ff8a33", "#d9561f"],
   },
 ];
 

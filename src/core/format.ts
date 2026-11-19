@@ -19,11 +19,16 @@ export function formatCount(n: number, locale: Locale): string {
   return nf(locale, { maximumFractionDigits: 0 }).format(Math.floor(Number.isFinite(n) ? n : 0));
 }
 
-/** Depth: meters with one decimal below 100 km (8.919,4 m), whole km above (2.900 km). */
+/**
+ * Depth: meters with one decimal below 100 km (8.919,4 m), whole km above (2.900 km). Near the
+ * surface, where a scoop is a fraction of a millimeter, more decimals so every scoop shows.
+ */
 export function formatDepth(meters: number, locale: Locale): string {
   const m = Number.isFinite(meters) ? Math.max(0, meters) : 0;
   if (m >= 100_000) return `${nf(locale, { maximumFractionDigits: 0 }).format(Math.floor(m / 1000))} km`;
-  return `${nf(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(Math.floor(m * 10) / 10)} m`;
+  const digits = m < 10 ? 3 : m < 100 ? 2 : 1;
+  const f = 10 ** digits;
+  return `${nf(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(Math.floor(m * f + 1e-9) / f)} m`;
 }
 
 /** Just the number part of `formatDepth`, for big displays that print the unit separately. */

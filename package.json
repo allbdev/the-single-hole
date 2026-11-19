@@ -11,7 +11,7 @@
   "scripts": {
     "dev": "concurrently -k -n room,web -c gray,cyan \"npm:dev:room\" \"npm:dev:web\"",
     "dev:web": "vite",
-    "dev:room": "tsx watch server/adapters/node.ts",
+    "dev:room": "ROOM_FAKE_COUNTRY=${ROOM_FAKE_COUNTRY:-BR} tsx watch server/adapters/node.ts",
     "room": "tsx server/adapters/node.ts",
     "build": "tsc --noEmit -p tsconfig.json && vite build",
     "preview": "vite preview",

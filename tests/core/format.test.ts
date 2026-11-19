@@ -28,7 +28,9 @@ describe("format", () => {
     expect(formatDepth(8919.4002, "en")).toBe("8,919.4 m");
     expect(formatDepth(7000, "pt-BR")).toBe("7.000,0 m");
     expect(formatDepth(2_900_000, "pt-BR")).toBe("2.900 km");
-    expect(formatDepth(-3, "en")).toBe("0.0 m");
+    expect(formatDepth(-3, "en")).toBe("0.000 m");
+    expect(formatDepth(0.0012, "pt-BR")).toBe("0,001 m");
+    expect(formatDepth(42.256, "pt-BR")).toBe("42,25 m");
     expect(splitDepth(8919.4, "pt-BR")).toEqual({ value: "8.919,4", unit: "m" });
   });
 

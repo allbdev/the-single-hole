@@ -1,0 +1,27 @@
+/* Design tokens from the art direction board ("Direção de arte"). */
+:root {
+  --ground: #0c0e10;
+  --ink: #f2f0ea;
+  --flag: #ff5a1f; /* survey flag: live things and "you" only */
+  --tape: #f2c81e;
+  --muted: #b9bcb6;
+  --salt: #e9e6df;
+  --panel: rgba(10, 12, 14, 0.74);
+  --panel-solid: rgba(10, 12, 14, 0.92);
+  --edge: rgba(255, 255, 255, 0.14);
+  --edge-strong: rgba(255, 255, 255, 0.22);
+  --radius: 12px;
+  --radius-button: 10px;
+  --blur: blur(14px);
+  --gutter: 28px;
+  --font-sans: "Archivo Variable", "Archivo", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --shadow-text: 0 2px 18px rgba(0, 0, 0, 0.55);
+  color-scheme: dark;
+}
+
+@media (max-width: 760px) {
+  :root {
+    --gutter: 16px;
+  }
+}
