@@ -90,3 +90,17 @@ describe("abuse", () => {
     expect(room.rim()[0]!.scoops).toBe(LIMITS.maxClaimedScoops);
   });
 });
+
+describe("abuse: silent sockets", () => {
+  it("closes sockets that never say hello, freeing the slot", () => {
+    const room = new Room(null, 0, { maxConnections: 2 });
+    room.connect("silent", { ip: "1", country: "BR" }, 0);
+    room.connect("ok", { ip: "2", country: "BR" }, 0);
+    room.message("ok", hello, 0);
+    expect(room.idle).toBe(false);
+    expect(room.tick(5_000).close).toEqual([]);
+    expect(room.tick(10_001).close).toEqual(["silent"]);
+    expect(room.connections).toBe(1);
+    expect(room.connect("new", { ip: "3", country: "BR" }, 10_002).close).toEqual([]);
+  });
+});

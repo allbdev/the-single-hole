@@ -100,6 +100,7 @@ export class RoomObject extends DurableObject<Env> {
     this.ctx.acceptWebSocket(server, [id]);
     server.serializeAttachment(info);
     this.deliver(this.room.connect(id, { ip: info.ip, country: info.country }, Date.now()));
+    this.schedule();
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -140,11 +141,14 @@ export class RoomObject extends DurableObject<Env> {
       });
     }
     if (this.timer !== null || this.room.idle) return;
-    this.timer = setTimeout(() => {
-      this.timer = null;
-      this.deliver(this.room.tick(Date.now()));
-      this.schedule();
-    }, 50);
+    this.timer = setTimeout(
+      () => {
+        this.timer = null;
+        this.deliver(this.room.tick(Date.now()));
+        this.schedule();
+      },
+      this.room.idleExceptHandshakes ? 1_000 : 50,
+    );
   }
 
   private deliver(out: Output): void {

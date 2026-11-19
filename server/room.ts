@@ -53,6 +53,8 @@ export const FEED_SIZE = 8;
 export const ACTIVITY_SECONDS = 60;
 export const STREAK_COUNT = 300;
 export const STREAK_GAP_MS = 2_000;
+/** A socket must say hello this soon, or it is closed (so silent sockets can't hold room slots). */
+export const HELLO_TIMEOUT_MS = 10_000;
 const DAY_MS = 86_400_000;
 const SURGE_WINDOW_MS = 4 * 60_000;
 const SURGE_EVERY_MS = 5 * 60_000;
@@ -63,6 +65,7 @@ const STREAK_FEED_GAP_MS = 20_000;
 
 interface Conn {
   id: string;
+  connectedAt: number;
   ip: string;
   country: CountryCode;
   spoon: SpoonId;
@@ -196,6 +199,13 @@ export class Room {
 
   /** True when the room has nothing left to broadcast (an adapter may stop ticking / hibernate). */
   get idle(): boolean {
+    if (this.stateDirty || this.rimDirty || this.worldDirty || this.pendingFeed.length > 0) return false;
+    for (const c of this.conns.values()) if (!c.hello) return false;
+    return true;
+  }
+
+  /** Only waiting for hellos: an adapter can tick slowly. */
+  get idleExceptHandshakes(): boolean {
     return !this.stateDirty && !this.rimDirty && !this.worldDirty && this.pendingFeed.length === 0;
   }
 
@@ -223,6 +233,7 @@ export class Room {
     ip.connections++;
     this.conns.set(id, {
       id,
+      connectedAt: now,
       ip: info.ip,
       country: info.country,
       spoon: "teaspoon",
@@ -543,6 +554,13 @@ export class Room {
 
   tick(now: number): Output {
     const out = empty();
+    for (const c of this.conns.values()) {
+      if (!c.hello && now - c.connectedAt > HELLO_TIMEOUT_MS) {
+        this.counters.badMessages++;
+        out.close.push(c.id);
+        this.disconnect(c.id);
+      }
+    }
     if (now - this.lastSurgeCheckAt >= 60_000) {
       this.lastSurgeCheckAt = now;
       this.checkSurge(now);
