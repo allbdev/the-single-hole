@@ -622,6 +622,11 @@ export class HoleScene implements View {
     return this.mode;
   }
 
+  /** Sharp band on the hole: lower on the landing photo, centered when looking down. */
+  focus(): number {
+    return this.mode === "dig" ? 0.5 : 0.42;
+  }
+
   setLighting(l: Lighting): void {
     const dist = 14;
     this.sun.position.set(

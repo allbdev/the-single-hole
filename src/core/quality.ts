@@ -9,6 +9,8 @@ export interface Quality {
   shadows: boolean;
   antialias: boolean;
   textureSize: number;
+  /** Photo-style depth of field (tilt-shift) on the hole view. */
+  depthOfField: boolean;
 }
 
 export const QUALITY: Record<QualityName, Quality> = {
@@ -20,6 +22,7 @@ export const QUALITY: Record<QualityName, Quality> = {
     shadows: false,
     antialias: false,
     textureSize: 1024,
+    depthOfField: false,
   },
   medium: {
     name: "medium",
@@ -29,6 +32,7 @@ export const QUALITY: Record<QualityName, Quality> = {
     shadows: false,
     antialias: true,
     textureSize: 1024,
+    depthOfField: false,
   },
   high: {
     name: "high",
@@ -38,6 +42,7 @@ export const QUALITY: Record<QualityName, Quality> = {
     shadows: true,
     antialias: true,
     textureSize: 2048,
+    depthOfField: true,
   },
 };
 

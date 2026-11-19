@@ -5,12 +5,18 @@ import {
   SRGBColorSpace,
   Vector3,
   WebGLRenderer,
+  PerspectiveCamera,
+  Scene,
   type Camera,
-  type PerspectiveCamera,
-  type Scene,
   type Texture,
 } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
+import { HorizontalTiltShiftShader } from "three/examples/jsm/shaders/HorizontalTiltShiftShader.js";
+import { VerticalTiltShiftShader } from "three/examples/jsm/shaders/VerticalTiltShiftShader.js";
 import type { Quality } from "../core/quality";
 
 /** Anything the stage can draw. */
@@ -19,6 +25,42 @@ export interface View {
   readonly camera: PerspectiveCamera;
   update(dt: number, time: number): void;
   resize?(width: number, height: number): void;
+  /** Where the photo is sharp (0 = bottom, 1 = top of the screen), or null for no depth of field. */
+  focus?(): number | null;
+}
+
+/** Tilt-shift depth of field: sharp band at the focus, softer towards the edges (art direction). */
+class DepthOfField {
+  readonly composer: EffectComposer;
+  private readonly render: RenderPass;
+  private readonly h: ShaderPass;
+  private readonly v: ShaderPass;
+
+  constructor(renderer: WebGLRenderer) {
+    this.composer = new EffectComposer(renderer);
+    this.render = new RenderPass(new Scene(), new PerspectiveCamera());
+    this.h = new ShaderPass(HorizontalTiltShiftShader);
+    this.v = new ShaderPass(VerticalTiltShiftShader);
+    this.composer.addPass(this.render);
+    this.composer.addPass(this.h);
+    this.composer.addPass(this.v);
+    this.composer.addPass(new OutputPass());
+  }
+
+  setSize(w: number, h: number, ratio: number): void {
+    this.composer.setPixelRatio(ratio);
+    this.composer.setSize(w, h);
+    this.h.uniforms.h!.value = 2.2 / (w * ratio);
+    this.v.uniforms.v!.value = 2.2 / (h * ratio);
+  }
+
+  draw(scene: Scene, camera: PerspectiveCamera, focus: number): void {
+    this.render.scene = scene;
+    this.render.camera = camera;
+    this.h.uniforms.r!.value = focus;
+    this.v.uniforms.r!.value = focus;
+    this.composer.render();
+  }
 }
 
 /** Owns the WebGL renderer and the canvas; draws whichever view is active. */
@@ -26,6 +68,7 @@ export class Stage {
   readonly renderer: WebGLRenderer;
   readonly canvas: HTMLCanvasElement;
   private env: Texture | null = null;
+  private dof: DepthOfField | null = null;
   width = 1;
   height = 1;
   private readonly tmp = new Vector3();
@@ -45,6 +88,7 @@ export class Stage {
     this.renderer.shadowMap.enabled = quality.shadows;
     this.renderer.shadowMap.type = PCFSoftShadowMap;
     this.canvas = this.renderer.domElement;
+    if (quality.depthOfField) this.dof = new DepthOfField(this.renderer);
     this.canvas.setAttribute("aria-hidden", "true");
     container.appendChild(this.canvas);
     this.resize();
@@ -68,6 +112,7 @@ export class Stage {
     this.height = Math.max(1, h);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.quality.maxPixelRatio));
     this.renderer.setSize(this.width, this.height, false);
+    this.dof?.setSize(this.width, this.height, this.renderer.getPixelRatio());
     this.canvas.style.width = "100%";
     this.canvas.style.height = "100%";
   }
@@ -80,7 +125,9 @@ export class Stage {
       cam.updateProjectionMatrix();
       view.resize?.(this.width, this.height);
     }
-    this.renderer.render(view.scene, cam);
+    const focus = view.focus?.() ?? null;
+    if (this.dof && focus !== null) this.dof.draw(view.scene, cam, focus);
+    else this.renderer.render(view.scene, cam);
   }
 
   /** Project a world point to CSS pixels in the canvas. */
