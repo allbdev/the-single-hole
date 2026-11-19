@@ -42,11 +42,14 @@ function connect(i: number): void {
   ws.on("open", () => {
     open++;
     ws.send(JSON.stringify({ t: "hello", v: 1, spoon: "teaspoon", scoops: 0 }));
-    timer = setInterval(() => {
-      const n = Math.max(1, Math.round((RATE * BATCH_MS) / 1000));
-      ws.send(JSON.stringify({ t: "dig", seq: seq++, n }));
-      sentScoops += n;
-    }, BATCH_MS + Math.random() * 50);
+    timer = setInterval(
+      () => {
+        const n = Math.max(1, Math.round((RATE * BATCH_MS) / 1000));
+        ws.send(JSON.stringify({ t: "dig", seq: seq++, n }));
+        sentScoops += n;
+      },
+      BATCH_MS + Math.random() * 50,
+    );
   });
   ws.on("message", (data) => {
     received++;

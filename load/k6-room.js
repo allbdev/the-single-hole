@@ -1,3 +1,4 @@
+/* global __ENV */
 // k6 load test for the deployed room (same idea as ws-load.ts).
 //   k6 run -e URL=wss://YOUR-DOMAIN/ws -e VUS=1000 load/k6-room.js
 // Only run it against your own deployment, never someone else's.

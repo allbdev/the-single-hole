@@ -23,7 +23,8 @@
     "e2e": "playwright test",
     "load": "tsx load/ws-load.ts",
     "deploy": "npm run build && wrangler deploy",
-    "dev:worker": "npm run build && wrangler dev"
+    "dev:worker": "npm run build && wrangler dev",
+    "budget": "tsx tools/check-budget.ts"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "^5.3.0",
