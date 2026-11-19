@@ -113,7 +113,7 @@
 ## Phase E · Launch
 
 54. [ ] Domain pointed at the static host; HTTPS; `[SEU DOMÍNIO]` on the share card replaced
-55. [ ] Posts: short clip of the hole and the share card, in English and PT-BR (`marketing/`)
+55. [x] Posts: short clip of the hole and the share card, in English and PT-BR (`marketing/`) (posts in `marketing/posts/`, clips recorded from the game by `tools/marketing/clip.ts`)
 56. [ ] Playtest with 5+ people at once on phones; fix what confuses them
 57. [ ] Go public: repo, link, posts
 

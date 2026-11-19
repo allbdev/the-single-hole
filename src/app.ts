@@ -527,6 +527,10 @@ export class App {
   // ---------- panels ----------
 
   private refreshPanels(): void {
+    if (this.world.season.number === 0) {
+      this.ui.setUnknown();
+      return;
+    }
     const total = this.reconciler.displayed || this.world.total;
     const meters = scoopsToMeters(total);
     this.ui.setDepth(meters, layerIndexAtScoops(total), metersToNextLayer(total));
@@ -552,7 +556,9 @@ export class App {
 
     const shown = this.reconciler.step(dt * 1000, this.batcher.pending);
     const tenths = Math.floor(shown);
-    if (tenths !== this.lastMetersText) {
+    if (this.world.season.number === 0) {
+      // Nothing from the room yet: keep the dashes.
+    } else if (tenths !== this.lastMetersText) {
       this.lastMetersText = tenths;
       const meters = scoopsToMeters(shown);
       const idx = layerIndexAtScoops(shown);

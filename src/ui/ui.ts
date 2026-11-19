@@ -519,16 +519,43 @@ export class Ui {
     for (const d of this.liveDots) d.classList.toggle("off", !connected);
   }
 
+  private connTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Connection status. "connecting" only shows after 2 s, so a normal load never flashes it. */
   setConnection(status: "connecting" | "open" | "waiting" | "error", errorKey?: MessageKey): void {
+    if (this.connTimer !== null) clearTimeout(this.connTimer);
+    this.connTimer = null;
     if (status === "open") {
       this.conn.hidden = true;
       return;
     }
-    this.conn.hidden = false;
-    setText(
-      this.conn,
-      errorKey ? this.t(errorKey) : this.t(status === "connecting" ? "conn.connecting" : "conn.waiting"),
-    );
+    const text = errorKey
+      ? this.t(errorKey)
+      : this.t(status === "connecting" ? "conn.connecting" : "conn.waiting");
+    const show = () => {
+      this.conn.hidden = false;
+      setText(this.conn, text);
+    };
+    if (status === "connecting") this.connTimer = setTimeout(show, 2_000);
+    else show();
+  }
+
+  /** Before the room's first message: no numbers yet, so show dashes instead of a fake 0. */
+  setUnknown(): void {
+    for (const el of [
+      this.depthPillValue,
+      this.depthValue,
+      this.tapeValue,
+      this.sectionBottom,
+      this.sectionProgress,
+    ]) {
+      setText(el, "—");
+    }
+    setText(this.depthUnit, "");
+    setText(this.layerName, "");
+    setText(this.layerNext, "");
+    setText(this.markerTag, this.t("section.here"));
+    for (const el of this.liveCount) setText(el, "—");
   }
 
   setClock(text: string | null): void {

@@ -15,7 +15,8 @@ Player-facing text is English by default, with a PT-BR toggle in the corner. Cod
 | [`CLAUDE.md`](CLAUDE.md) | Project rules (language, testing, git workflow, architecture, design sync) |
 | [`TODO_FOR_YOU.md`](TODO_FOR_YOU.md) | Things only the developer can do |
 | [`load/README.md`](load/README.md) | Load test method and results |
-| [`designs/`](designs) | Screen, spoon, layer and art-direction mockups |
+| [`designs/`](designs) | Screen, spoon, layer and art-direction mockups, rendered from the game |
+| [`marketing/`](marketing) | Launch posts and clips |
 
 ## What you see
 
@@ -123,7 +124,7 @@ shared/        Protocol, depth math, token bucket, data (layers, spoons, finds).
 tests/         Vitest, mirroring src/, server/ and shared/.
 e2e/           Playwright smoke test.
 load/          Load test (Node and k6) and results.
-tools/         Bots, bundle budget, country centroids generator.
+tools/         Bots, bundle budget, board renders, launch clips, country centroids.
 designs/       Mockups (reference only, not shipped).
 ```
 
