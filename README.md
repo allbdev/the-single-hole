@@ -36,11 +36,11 @@ The write-up (load-test numbers, what broke first, what it costs) will go here o
 
 ## Requirements
 
-- **Node.js 22 LTS** and npm
+- **Node.js 22+** (CI uses 24) and npm
 - **Git LFS** (images, textures and fonts)
 
 ```sh
-brew install node@22 git-lfs
+brew install node git-lfs
 git lfs install
 ```
 
