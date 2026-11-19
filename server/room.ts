@@ -83,6 +83,15 @@ interface IpState {
   bucket: TokenBucket;
 }
 
+/** A connection as an adapter stores it across hibernation. */
+export interface ConnectionInfo {
+  ip: string;
+  country: CountryCode;
+  spoon: SpoonId;
+  claimed: number;
+  hello: boolean;
+}
+
 /** Counters for monitoring. No personal data. */
 export interface RoomCounters {
   accepted: number;
@@ -229,6 +238,27 @@ export class Room {
       joinedAnnounced: false,
     });
     return out;
+  }
+
+  /** What an adapter must keep to rebuild a connection after the process sleeps (hibernation). */
+  connectionInfo(id: string): ConnectionInfo | null {
+    const c = this.conns.get(id);
+    if (!c) return null;
+    return { ip: c.ip, country: c.country, spoon: c.spoon, claimed: c.claimed, hello: c.hello };
+  }
+
+  /**
+   * Re-register a connection that survived while the room was asleep (Durable Object hibernation).
+   * Rate buckets start fresh; the rest comes back as it was.
+   */
+  resume(id: string, info: ConnectionInfo, now: number): void {
+    if (this.conns.has(id)) return;
+    this.connect(id, { ip: info.ip, country: info.country }, now);
+    const c = this.conns.get(id);
+    if (!c) return;
+    c.spoon = info.spoon;
+    c.claimed = info.claimed;
+    c.hello = info.hello;
   }
 
   disconnect(id: string): void {

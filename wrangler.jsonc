@@ -1,0 +1,19 @@
+{
+  // Cloudflare Worker + Durable Object for the room, static client from dist/.
+  // Deploy: npm run build && npx wrangler deploy (needs a Cloudflare account; see TODO_FOR_YOU.md).
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "the-single-hole",
+  "main": "server/adapters/cloudflare.ts",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/ws", "/health"],
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "ROOM", "class_name": "RoomObject" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RoomObject"] }],
+  "observability": { "enabled": true },
+}

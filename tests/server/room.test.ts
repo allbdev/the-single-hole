@@ -322,3 +322,19 @@ describe("Room: snapshots", () => {
     expect(week.spanMs).toBe(3 * day);
   });
 });
+
+describe("Room: hibernation", () => {
+  it("exports and resumes connections", () => {
+    const room = newRoom();
+    join(room, "a", 0, { country: "JP" });
+    room.message("a", encode({ t: "spoon", spoon: "bent" }), 0);
+    const info = room.connectionInfo("a")!;
+    expect(info).toEqual({ ip: "ip-a", country: "JP", spoon: "bent", claimed: 0, hello: true });
+    const woke = newRoom();
+    woke.resume("a", info, 10);
+    expect(woke.players).toBe(1);
+    expect(msgs(woke.message("a", dig(0, 2), 10), "a")).toContainEqual({ t: "ack", seq: 0, accepted: 2 });
+    expect(woke.rim()[0]).toMatchObject({ spoon: "bent", country: "JP" });
+    expect(room.connectionInfo("ghost")).toBeNull();
+  });
+});

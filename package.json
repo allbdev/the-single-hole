@@ -2,7 +2,7 @@
   "name": "the-single-hole",
   "version": "0.1.0",
   "private": true,
-  "description": "Um Buraco Só: everyone on the internet digs the same hole, live.",
+  "description": "Um Buraco S\u00f3: everyone on the internet digs the same hole, live.",
   "license": "MIT",
   "type": "module",
   "engines": {
@@ -15,13 +15,15 @@
     "room": "tsx server/adapters/node.ts",
     "build": "tsc --noEmit -p tsconfig.json && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.worker.json",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "test": "vitest run",
     "check": "npm run typecheck && npm run lint && npm run test",
     "e2e": "playwright test",
-    "load": "tsx load/ws-load.ts"
+    "load": "tsx load/ws-load.ts",
+    "deploy": "npm run build && wrangler deploy",
+    "dev:worker": "npm run build && wrangler dev"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "^5.3.0",
@@ -32,6 +34,7 @@
     "ws": "^8.23.0"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261119.1",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.65.1",
     "@types/node": "^26.6.6",
@@ -47,6 +50,7 @@
     "typescript-eslint": "^8.73.0",
     "vite": "^8.3.8",
     "vitest": "^5.1.1",
-    "world-countries": "^5.1.0"
+    "world-countries": "^5.1.0",
+    "wrangler": "^4.165.0"
   }
 }
