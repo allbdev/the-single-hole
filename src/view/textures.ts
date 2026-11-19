@@ -59,8 +59,8 @@ export function groundCanvas(size: number, theme: "lawn" | "garden", extent = 16
     const grassB = hexToRgb("#3a5520");
     const dirtA = hexToRgb("#3b2a1c");
     const dirtB = hexToRgb("#1d140d");
-    const gravelA = hexToRgb("#b8b3a7");
-    const gravelB = hexToRgb("#8e897e");
+    const gravelA = hexToRgb("#8f8a80");
+    const gravelB = hexToRgb("#67635b");
     const rand = mulberry32(3);
     const canvas = pixels(size, (x, y) => {
       const u = x / size - 0.5;
@@ -72,7 +72,7 @@ export function groundCanvas(size: number, theme: "lawn" | "garden", extent = 16
         // Raked gravel in rings around the hole.
         const rake = 0.5 + 0.5 * Math.sin(r * 9 + n.fbm(x / 60, y / 60) * 2);
         const g = lerpRgb(gravelA, gravelB, rake * 0.55 + d * 0.45);
-        if (r < edge) return lerpRgb(dirtA, dirtB, d);
+        if (r < 1.25 + (edge - 3.1) * 0.3) return lerpRgb(dirtA, dirtB, d);
         return g;
       }
       if (r < edge) {

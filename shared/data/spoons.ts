@@ -7,6 +7,8 @@ export type SpoonFinish = "mirror" | "brushed" | "wood" | "plastic" | "tarnished
 export interface SpoonData {
   id: SpoonId;
   name: { en: string; "pt-BR": string };
+  /** How the spoon reads inside a feed sentence ("Chile entrou com colher de pau"). */
+  inSentence: { en: string; "pt-BR": string };
   line: { en: string; "pt-BR": string };
   /** Lifetime scoops needed, or null when unlocked another way (the golden spoon). */
   unlockAt: number | null;
@@ -23,6 +25,7 @@ export const SPOONS: readonly SpoonData[] = [
   {
     id: "teaspoon",
     name: { en: "Teaspoon", "pt-BR": "Colher de chá" },
+    inSentence: { en: "teaspoon", "pt-BR": "colher de chá" },
     line: { en: "Stainless. Everyone starts here.", "pt-BR": "Inox. Todo mundo começa aqui." },
     unlockAt: 0,
     finish: "mirror",
@@ -33,6 +36,7 @@ export const SPOONS: readonly SpoonData[] = [
   {
     id: "soup",
     name: { en: "Soup spoon", "pt-BR": "Colher de sopa" },
+    inSentence: { en: "soup spoon", "pt-BR": "colher de sopa" },
     line: { en: "Brushed steel.", "pt-BR": "Inox escovado." },
     unlockAt: 100,
     finish: "brushed",
@@ -43,6 +47,7 @@ export const SPOONS: readonly SpoonData[] = [
   {
     id: "wooden",
     name: { en: "Wooden spoon", "pt-BR": "Colher de pau" },
+    inSentence: { en: "wooden spoon", "pt-BR": "colher de pau" },
     line: { en: "From the kitchen drawer.", "pt-BR": "Da gaveta da cozinha." },
     unlockAt: 500,
     finish: "wood",
@@ -53,6 +58,7 @@ export const SPOONS: readonly SpoonData[] = [
   {
     id: "plastic",
     name: { en: "Plastic spoon", "pt-BR": "Colher de plástico" },
+    inSentence: { en: "plastic spoon", "pt-BR": "colher de plástico" },
     line: { en: "Left over from the birthday party.", "pt-BR": "Sobrou do aniversário." },
     unlockAt: 1_000,
     finish: "plastic",
@@ -63,6 +69,7 @@ export const SPOONS: readonly SpoonData[] = [
   {
     id: "grandmaSilver",
     name: { en: "Grandma's silver", "pt-BR": "Prata da vó" },
+    inSentence: { en: "grandma's silver", "pt-BR": "a prata da vó" },
     line: { en: "It was never supposed to leave the house.", "pt-BR": "Não era pra sair de casa." },
     unlockAt: 5_000,
     finish: "tarnished",
@@ -73,6 +80,7 @@ export const SPOONS: readonly SpoonData[] = [
   {
     id: "enamel",
     name: { en: "Enamel spoon", "pt-BR": "Esmaltada" },
+    inSentence: { en: "enamel spoon", "pt-BR": "colher esmaltada" },
     line: { en: "From a camping trip.", "pt-BR": "De acampamento." },
     unlockAt: 10_000,
     finish: "enamel",
@@ -83,6 +91,7 @@ export const SPOONS: readonly SpoonData[] = [
   {
     id: "bent",
     name: { en: "Bent spoon", "pt-BR": "Colher torta" },
+    inSentence: { en: "bent spoon", "pt-BR": "colher torta" },
     line: { en: "Dug too much.", "pt-BR": "Cavou demais." },
     unlockAt: 25_000,
     finish: "brushed",
@@ -93,6 +102,7 @@ export const SPOONS: readonly SpoonData[] = [
   {
     id: "golden",
     name: { en: "Golden spoon", "pt-BR": "Colher dourada" },
+    inSentence: { en: "golden spoon", "pt-BR": "colher dourada" },
     line: {
       en: "Only for those online at the arrival.",
       "pt-BR": "Só pra quem estava online na chegada.",

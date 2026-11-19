@@ -56,7 +56,12 @@ describe("spoons data", () => {
       "Colher torta",
       "Colher dourada",
     ]);
-    for (const s of SPOONS) expect(s.color).toMatch(/^#[0-9a-f]{6}$/);
+    for (const s of SPOONS) {
+      expect(s.color).toMatch(/^#[0-9a-f]{6}$/);
+      expect(s.inSentence.en).not.toBe("");
+      expect(s.inSentence["pt-BR"]).not.toBe("");
+    }
+    expect(SPOONS[2]!.inSentence["pt-BR"]).toBe("colher de pau");
   });
 
   it("unlocks by lifetime scoops; the golden spoon only at a season end", () => {

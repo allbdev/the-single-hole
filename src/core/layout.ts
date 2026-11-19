@@ -56,6 +56,8 @@ export function hash01(text: string): number {
 
 /** Your spoon's fixed place at the rim: front right, where the canvas puts "VOCÊ". */
 export const YOU_ANGLE = -0.45;
+/** Where the tape measure lies (front right, below you): kept clear of spoons. */
+export const TAPE_ANGLE = -1.05;
 
 /**
  * Place spoons around the rim. Each id keeps its place (by hash) so spoons don't jump when the list
@@ -65,16 +67,16 @@ export function rimSlots(rim: RimSpoon[], you: string | null, max = 16): RimSlot
   const others = rim.filter((r) => r.id !== you).slice(0, max - 1);
   const slots: RimSlot[] = [];
   if (you) slots.push({ id: you, angle: YOU_ANGLE, radius: 1.75, tilt: 1.05, twist: 0.3, you: true });
-  const used: number[] = [YOU_ANGLE];
+  const used: number[] = [YOU_ANGLE, TAPE_ANGLE];
   for (const r of others) {
     let angle = hash01(r.id) * Math.PI * 2;
     // Nudge away from neighbours so tags don't pile up.
-    for (let tries = 0; tries < 12 && used.some((a) => angularGap(a, angle) < 0.32); tries++) angle += 0.37;
+    for (let tries = 0; tries < 12 && used.some((a) => angularGap(a, angle) < 0.4); tries++) angle += 0.23;
     used.push(angle);
     slots.push({
       id: r.id,
       angle,
-      radius: 1.75 + hash01(r.id + "r") * 0.7,
+      radius: 1.8 + hash01(r.id + "r") * 0.45,
       tilt: 0.75 + hash01(r.id + "t") * 0.55,
       twist: hash01(r.id + "w") * Math.PI * 2,
       you: false,

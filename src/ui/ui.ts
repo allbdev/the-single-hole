@@ -42,7 +42,7 @@ export function feedText(item: FeedItem, locale: Locale): string {
     case "joined":
       return t("feed.joined", {
         country: countryName(item.country, locale),
-        spoon: pick(locale, spoonById(item.spoon).name).toLowerCase(),
+        spoon: pick(locale, spoonById(item.spoon).inSentence),
       });
     case "surge":
       return t("feed.surge", { meters: formatRoundMeters(item.meters, locale), minutes: item.minutes });
@@ -473,6 +473,10 @@ export class Ui {
 
   private awayHidden = true;
   private globeLoading = false;
+
+  setArriving(on: boolean): void {
+    this.root.classList.toggle("arriving", on);
+  }
 
   setGlobeLoading(loading: boolean): void {
     this.globeLoading = loading;

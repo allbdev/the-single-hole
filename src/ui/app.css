@@ -1264,3 +1264,17 @@ a:hover {
     display: contents;
   }
 }
+
+/* The season-end screen takes over: hide the dig HUD under it. */
+.ui.arriving .depth-panel,
+.ui.arriving .depth-pill,
+.ui.arriving .feed,
+.ui.arriving .tags,
+.ui.arriving .dig-bar,
+.ui.arriving .bottom-right,
+.ui.arriving .bottom-left,
+.ui.arriving .landing,
+.ui.arriving .landing-shade,
+.ui.arriving .clock {
+  display: none !important;
+}

@@ -59,19 +59,19 @@ const SHAFT_DEPTH = 14;
 const noise = new ValueNoise(17);
 
 /** Ground height at a point (meters): the funnel into the hole, the dirt mound, flat lawn. */
-export function groundHeight(x: number, z: number): number {
+export function groundHeight(x: number, z: number, mound = 1): number {
   const r = Math.hypot(x, z);
   const bump = (noise.fbm(x * 1.6 + 50, z * 1.6 + 50, 3) - 0.5) * 0.12;
   if (r < HOLE_RADIUS * 0.94) return -0.45;
   if (r < HOLE_RADIUS * 1.1) {
     const t = (r - HOLE_RADIUS * 0.94) / (HOLE_RADIUS * 0.16);
-    return -0.35 + t * 0.5;
+    return -0.35 + t * (0.2 + 0.3 * mound);
   }
   if (r < 3.0) {
     const t = (r - HOLE_RADIUS * 1.1) / (3.0 - HOLE_RADIUS * 1.1);
-    return 0.15 + Math.sin(Math.min(1, t * 1.4) * Math.PI) * 0.22 * (1 - t * 0.4) + bump * (1 - t);
+    return (0.15 + Math.sin(Math.min(1, t * 1.4) * Math.PI) * 0.22 * (1 - t * 0.4) + bump * (1 - t)) * mound;
   }
-  if (r < 3.6) return 0.05 * (1 - (r - 3) / 0.6) + bump * 0.2;
+  if (r < 3.6) return (0.05 * (1 - (r - 3) / 0.6) + bump * 0.2) * mound;
   return 0;
 }
 
@@ -122,6 +122,12 @@ export class HoleScene implements View {
   private shakeT = 0;
   private readonly reducedMotion: boolean;
   readonly tapeAnchor = new Vector3(0.95, 0.25, 1.55);
+  private get mound(): number {
+    return this.theme === "garden" ? 0.3 : 1;
+  }
+  private gh(x: number, z: number): number {
+    return groundHeight(x, z, this.mound);
+  }
 
   constructor(
     private readonly quality: Quality,
@@ -181,7 +187,7 @@ export class HoleScene implements View {
   // ---------- building ----------
 
   /** Radial ground: rings around the hole, so the rim is a smooth circle. */
-  static groundGeometry(rings: number, segments: number): BufferGeometry {
+  static groundGeometry(rings: number, segments: number, mound = 1): BufferGeometry {
     const pos: number[] = [];
     const uv: number[] = [];
     const idx: number[] = [];
@@ -194,7 +200,7 @@ export class HoleScene implements View {
         const a = (i / segments) * Math.PI * 2;
         const x = Math.cos(a) * r;
         const z = Math.sin(a) * r;
-        pos.push(x, groundHeight(x, z), z);
+        pos.push(x, groundHeight(x, z, mound), z);
         uv.push(x / GROUND_EXTENT + 0.5, 0.5 - z / GROUND_EXTENT);
       }
     }
@@ -216,7 +222,7 @@ export class HoleScene implements View {
 
   private buildGround(): Mesh {
     const low = this.quality.name === "low";
-    const geo = HoleScene.groundGeometry(low ? 60 : 96, low ? 128 : 200);
+    const geo = HoleScene.groundGeometry(low ? 60 : 96, low ? 128 : 200, this.mound);
     const map = toTexture(groundCanvas(1024, this.theme));
     map.wrapS = map.wrapT = 1001; // ClampToEdge
     const bump = toTexture(dirtCanvas(256), GROUND_EXTENT / 1.5, false);
@@ -293,7 +299,7 @@ export class HoleScene implements View {
   }
 
   private buildClods(): InstancedMesh {
-    const count = this.quality.clods;
+    const count = this.theme === "garden" ? Math.round(this.quality.clods * 0.25) : this.quality.clods;
     const geo = new IcosahedronGeometry(0.05, 1);
     const p = geo.attributes.position!;
     const n = new ValueNoise(41);
@@ -313,11 +319,11 @@ export class HoleScene implements View {
     const c = new Color();
     for (let i = 0; i < count; i++) {
       const a = rand() * Math.PI * 2;
-      const r = HOLE_RADIUS * 1.08 + Math.pow(rand(), 0.8) * 2.0;
+      const r = HOLE_RADIUS * 1.08 + Math.pow(rand(), 0.8) * (this.theme === "garden" ? 0.4 : 2.0);
       const x = Math.cos(a) * r;
       const z = Math.sin(a) * r;
       const s = 0.3 + Math.pow(rand(), 3) * 1.6;
-      this.dummy.position.set(x, groundHeight(x, z) + 0.01 * s, z);
+      this.dummy.position.set(x, this.gh(x, z) + 0.01 * s, z);
       this.dummy.rotation.set(rand() * 6, rand() * 6, rand() * 6);
       this.dummy.scale.setScalar(s);
       this.dummy.updateMatrix();
@@ -386,7 +392,7 @@ export class HoleScene implements View {
       const edge = 3.1 + (n.fbm(x / 1.6 + 30, z / 1.6 + 30, 3) - 0.5) * 1.1;
       if (r < edge && rand() > 0.08) continue;
       const h = 0.12 + rand() * 0.18 + n.noise(x * 0.8, z * 0.8) * 0.1;
-      this.dummy.position.set(x, groundHeight(x, z) - 0.01, z);
+      this.dummy.position.set(x, this.gh(x, z) - 0.01, z);
       this.dummy.rotation.set((rand() - 0.5) * 0.5, rand() * Math.PI * 2, (rand() - 0.5) * 0.5);
       this.dummy.scale.set(1 + rand(), h, 1);
       this.dummy.updateMatrix();
@@ -470,7 +476,7 @@ export class HoleScene implements View {
     g.name = "tape";
     const yellow = new MeshStandardMaterial({ color: "#f2c81e", roughness: 0.45 });
     const caseMesh = new Mesh(new BoxGeometry(0.15, 0.065, 0.15), yellow);
-    caseMesh.position.set(1.05, groundHeight(1.05, 1.9) + 0.04, 1.9);
+    caseMesh.position.set(1.05, this.gh(1.05, 1.9) + 0.04, 1.9);
     caseMesh.rotation.y = 0.5;
     caseMesh.castShadow = true;
     const hub = new Mesh(
@@ -480,8 +486,8 @@ export class HoleScene implements View {
     hub.position.copy(caseMesh.position);
     // Tape: a ribbon from the case over the lip and down into the hole.
     const pts = [
-      new Vector3(1.0, groundHeight(1.0, 1.82) + 0.03, 1.82),
-      new Vector3(0.82, groundHeight(0.82, 1.45) + 0.03, 1.45),
+      new Vector3(1.0, this.gh(1.0, 1.82) + 0.03, 1.82),
+      new Vector3(0.82, this.gh(0.82, 1.45) + 0.03, 1.45),
       new Vector3(0.62, 0.02, 1.02),
       new Vector3(0.55, -0.5, 0.82),
       new Vector3(0.5, -3.5, 0.78),
@@ -547,7 +553,7 @@ export class HoleScene implements View {
     top.position.y = 0.21;
     this.lantern.position.set(0, 0.35, 0);
     this.lanternGroup.add(glass, base, top, this.lantern);
-    this.lanternGroup.position.set(-2.1, groundHeight(-2.1, 0.9), 0.9);
+    this.lanternGroup.position.set(-2.1, this.gh(-2.1, 0.9), 0.9);
     this.lanternGroup.visible = false;
     this.lanternGroup.userData.glass = glass;
     this.scene.add(this.lanternGroup);
@@ -575,7 +581,8 @@ export class HoleScene implements View {
         v.y *= 0.6;
         p.setXYZ(i, v.x, v.y, v.z);
         const moss = v.y > 0.2 ? Math.min(1, (v.y - 0.2) * 2) : 0;
-        colors.push(0.42 - moss * 0.2, 0.41 + moss * 0.05, 0.38 - moss * 0.22);
+        // Linear colors (sRGB ~0.55 gray, mossy green on top).
+        colors.push(0.16 - moss * 0.1, 0.16 + moss * 0.02, 0.14 - moss * 0.1);
       }
       geo.setAttribute("color", new Float32BufferAttribute(colors, 3));
       geo.computeVertexNormals();
@@ -670,7 +677,7 @@ export class HoleScene implements View {
     const outer = new Group();
     const x = Math.cos(slot.angle) * slot.radius;
     const z = -Math.sin(slot.angle) * slot.radius;
-    outer.position.set(x, groundHeight(x, z) - 0.03, z);
+    outer.position.set(x, this.gh(x, z) - 0.03, z);
     outer.rotation.order = "YXZ";
     outer.rotation.y = Math.atan2(x, z);
     outer.rotation.x = slot.tilt;
@@ -814,7 +821,7 @@ export class HoleScene implements View {
       p.life -= dt;
       p.vel.y -= 9 * dt;
       p.pos.addScaledVector(p.vel, dt);
-      const floor = groundHeight(p.pos.x, p.pos.z);
+      const floor = this.gh(p.pos.x, p.pos.z);
       if (p.life <= 0 || p.pos.y < floor - 0.5) {
         this.particles.splice(i, 1);
         continue;

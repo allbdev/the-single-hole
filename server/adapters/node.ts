@@ -9,7 +9,9 @@ import { dirname } from "node:path";
 import { WebSocketServer, type WebSocket } from "ws";
 import { encode, normalizeCountry } from "../../shared/protocol";
 import { ALL, Room, type Output } from "../room";
-import { chooseSnapshot } from "../snapshot";
+import { chooseSnapshot, emptySnapshot } from "../snapshot";
+import { ARRIVAL_SCOOPS } from "../../shared/data/layers";
+import { layerIndexAtScoops } from "../../shared/depth";
 
 const PORT = Number(process.env.ROOM_PORT ?? 8787);
 const SNAPSHOT_PATH = process.env.ROOM_SNAPSHOT ?? ".room/snapshot.json";
@@ -18,6 +20,10 @@ const SNAPSHOT_EVERY_MS = 5_000;
 const TRUST_PROXY = process.env.TRUST_PROXY === "1";
 /** Lets local testing pretend to be another country: ROOM_FAKE_COUNTRY=JP. */
 const FAKE_COUNTRY = process.env.ROOM_FAKE_COUNTRY;
+/** Dev only: read the country from `?country=JP` on the socket URL (for bots and board renders). */
+const DEV_QUERY_COUNTRY = process.env.ROOM_DEV_QUERY_COUNTRY === "1";
+/** Dev only: start a fresh room at this many scoops (ignored when a snapshot exists). */
+const START_SCOOPS = Number(process.env.ROOM_START_SCOOPS ?? 0);
 
 function readText(path: string): string | null {
   try {
@@ -65,13 +71,31 @@ function clientIp(req: IncomingMessage): string {
 }
 
 function country(req: IncomingMessage): string {
+  if (DEV_QUERY_COUNTRY) {
+    const q = new URL(req.url ?? "/", "http://x").searchParams.get("country");
+    if (q) return normalizeCountry(q);
+  }
   if (FAKE_COUNTRY) return normalizeCountry(FAKE_COUNTRY);
   if (!TRUST_PROXY) return "XX";
   const h = req.headers["cf-ipcountry"];
   return normalizeCountry(Array.isArray(h) ? h[0] : h);
 }
 
-const room = new Room(loadSnapshot(), Date.now());
+function initialSnapshot() {
+  const loaded = loadSnapshot();
+  if (loaded || !START_SCOOPS) return loaded;
+  const s = emptySnapshot(Date.now());
+  s.total = Math.min(START_SCOOPS, ARRIVAL_SCOOPS - 1);
+  const layer = layerIndexAtScoops(s.total);
+  const day = 86_400_000;
+  s.season.startedAt = Date.now() - 400 * day;
+  s.season.layerEnteredAt = s.season.layerEnteredAt.map((_, i) =>
+    i <= layer ? Date.now() - (layer - i + 1) * 6 * day : null,
+  );
+  return s;
+}
+
+const room = new Room(initialSnapshot(), Date.now());
 const sockets = new Map<string, WebSocket>();
 
 function deliver(out: Output): void {
@@ -96,7 +120,11 @@ const http = createServer((req, res) => {
   res.writeHead(404).end();
 });
 
-const wss = new WebSocketServer({ server: http, path: "/ws", maxPayload: 1024 });
+const wss = new WebSocketServer({ noServer: true, maxPayload: 1024 });
+http.on("upgrade", (req, socket, head) => {
+  if (new URL(req.url ?? "/", "http://x").pathname !== "/ws") return socket.destroy();
+  wss.handleUpgrade(req, socket, head, (ws) => wss.emit("connection", ws, req));
+});
 wss.on("connection", (ws, req) => {
   const id = randomUUID().slice(0, 8);
   sockets.set(id, ws);

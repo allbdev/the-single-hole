@@ -385,6 +385,7 @@ export class App {
       new Map(this.world.rim.map((r) => [r.id, r.spoon] as [string, SpoonId])),
     );
     this.arrivalShowing = true;
+    this.ui.setArriving(true);
     this.dialogs.close();
     this.dialogs.arrival({
       entry,
@@ -392,12 +393,14 @@ export class App {
       golden: online,
       onMural: () => {
         this.arrivalShowing = false;
+        this.ui.setArriving(false);
         this.dialogs.close();
         this.connection.send({ t: "fame" });
         this.dialogs.fame(this.world.fame);
       },
       onNext: () => {
         this.arrivalShowing = false;
+        this.ui.setArriving(false);
         this.go("hole");
       },
     });
@@ -432,7 +435,12 @@ export class App {
   }
 
   private openShare(): void {
+    // The card uses the landing's photo angle (board 6), then the view goes back.
+    const mode = this.hole.cameraMode;
+    this.hole.setCameraMode("landing", true);
+    this.hole.update(0, 0);
     const photo = this.stage.snapshot(this.hole);
+    this.hole.setCameraMode(mode, true);
     const url = `${location.origin}/`;
     this.dialogs.share({
       photo,
