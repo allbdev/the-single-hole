@@ -80,7 +80,7 @@ The mockups live in the claude.ai Design canvas **"Um Buraco Só — Mockups"**:
 - **Share card:** drawn on an offscreen 2D canvas at 1200 × 630 from numbers only (no player data); copy image, copy link, download PNG.
 - **Accessibility:** Space and Enter dig as well as click/tap; real buttons; text meets 4.5:1 on the panels; `prefers-reduced-motion` turns off camera shake and particles.
 - **Load test:** k6 scripts in `load/`. The README reports how many connections one room holds and where it breaks, with the machine and date. Rerun after any change to the room or the protocol.
-- **Performance budget:** a mid-range phone on 4G: first paint under 2 s, 60 fps on the hole view (30 fps floor), initial JS under 300 KB gzipped before textures. Check with Lighthouse in CI.
+- **Performance budget:** a mid-range phone on 4G: first paint under 2 s, 60 fps on the hole view (30 fps floor), initial JS under 300 KB gzipped before textures. `npm run budget` checks the JS size in CI; run Lighthouse by hand before launch (a WebGL page's score is too noisy in CI).
 
 ## Workflow
 

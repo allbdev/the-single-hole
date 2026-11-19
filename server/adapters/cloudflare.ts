@@ -14,24 +14,32 @@ export interface Env {
 }
 
 const SNAPSHOT_EVERY_MS = 5_000;
-const SECURITY_HEADERS: Record<string, string> = {
-  "x-content-type-options": "nosniff",
-  "referrer-policy": "strict-origin-when-cross-origin",
-  "permissions-policy": "camera=(), microphone=(), geolocation=()",
-};
+// Static files and their security headers (CSP etc.) come from dist/ and public/_headers.
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    if (url.pathname === "/ws" && !sameOrigin(request, url)) {
+      // Other sites can't open sockets to the room from their visitors' browsers.
+      return new Response("forbidden", { status: 403 });
+    }
     if (url.pathname === "/ws" || url.pathname === "/health") {
       return env.ROOM.get(env.ROOM.idFromName("global")).fetch(request);
     }
-    const res = await env.ASSETS.fetch(request);
-    const out = new Response(res.body, res);
-    for (const [k, v] of Object.entries(SECURITY_HEADERS)) out.headers.set(k, v);
-    return out;
+    return env.ASSETS.fetch(request);
   },
 } satisfies ExportedHandler<Env>;
+
+/** Browsers always send Origin on WebSocket upgrades; non-browser clients may omit it. */
+export function sameOrigin(request: Request, url: URL): boolean {
+  const origin = request.headers.get("Origin");
+  if (origin === null) return true;
+  try {
+    return new URL(origin).host === url.host;
+  } catch {
+    return false;
+  }
+}
 
 interface Attachment extends ConnectionInfo {
   id: string;
