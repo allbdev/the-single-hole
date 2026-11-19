@@ -1,3 +1,4 @@
+import { LAYERS } from "../../shared/data/layers";
 import { layerCanvas, layerEmissiveCanvas, makeCanvas } from "./textures";
 
 /**
@@ -20,11 +21,19 @@ export function coreSampleCanvas(layerIndex: number, width = 96, height = 260): 
   for (let x = width; x >= 0; x -= 8) ctx.lineTo(x, bottom + Math.cos(x * 0.5 + layerIndex) * 6);
   ctx.closePath();
   ctx.clip();
-  ctx.drawImage(tex, 0, 0, 256, 256 * (height / width) * 0.4, 0, 0, width, height);
-  if (glow) {
-    ctx.globalCompositeOperation = "lighter";
-    ctx.drawImage(glow, 0, 0, 256, 256 * (height / width) * 0.4, 0, 0, width, height);
-    ctx.globalCompositeOperation = "source-over";
+  // Tile the layer texture down the whole core (at the core's width). The Pré-Sal is one
+  // sequence (salt over black rock), so it's drawn once, stretched.
+  const stretch = LAYERS[layerIndex]?.id === "preSalt";
+  if (stretch) ctx.drawImage(tex, 0, 0, width, height);
+  for (let y = 0; !stretch && y < height; y += width) {
+    ctx.drawImage(tex, 0, 0, 256, 256, 0, y, width, width);
+    if (glow) {
+      ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = 0.45;
+      ctx.drawImage(glow, 0, 0, 256, 256, 0, y, width, width);
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = "source-over";
+    }
   }
   // Cylinder shading.
   const shade = ctx.createLinearGradient(0, 0, width, 0);

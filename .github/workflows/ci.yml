@@ -51,6 +51,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         if: env.HAS_TOKEN == 'true'
+        with:
+          lfs: true # public/og.jpg is in LFS and ships with the site
       - uses: actions/setup-node@v4
         if: env.HAS_TOKEN == 'true'
         with:

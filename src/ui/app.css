@@ -844,7 +844,7 @@ a:hover {
 }
 
 .milestone {
-  width: 600px;
+  width: min(600px, 100%);
   padding: 34px 38px;
   display: flex;
   flex-direction: column;
@@ -890,7 +890,7 @@ a:hover {
 }
 
 .share {
-  width: 780px;
+  width: min(780px, 100%);
   padding: 22px;
   display: flex;
   flex-direction: column;
@@ -979,7 +979,7 @@ a:hover {
 
 .fame,
 .spoons {
-  width: 640px;
+  width: min(640px, 100%);
   padding: 22px 24px;
   display: flex;
   flex-direction: column;
@@ -1147,7 +1147,22 @@ a:hover {
   }
   .top-right {
     top: auto;
-    bottom: 170px;
+    bottom: 162px;
+    left: var(--gutter);
+    right: auto;
+    align-items: flex-start;
+  }
+  [data-view="landing"] .top-right,
+  [data-view="section"] .top-right,
+  [data-view="world"] .top-right {
+    bottom: 90px;
+  }
+  [data-view="landing"] .top-right {
+    top: var(--gutter);
+    bottom: auto;
+    left: auto;
+    right: var(--gutter);
+    align-items: flex-end;
   }
   .phone-top .top-right {
     top: var(--gutter);
@@ -1183,8 +1198,11 @@ a:hover {
   }
   .bottom-right {
     right: var(--gutter);
-    bottom: auto;
-    top: 140px;
+    bottom: 162px;
+  }
+  .backdrop {
+    padding: 12px;
+    align-items: end;
   }
   .bottom-right .btn {
     min-width: 0;

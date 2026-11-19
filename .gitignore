@@ -12,3 +12,4 @@ test-results/
 .partykit/
 .room/
 .wrangler/
+.renders/

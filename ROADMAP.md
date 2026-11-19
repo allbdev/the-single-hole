@@ -87,8 +87,8 @@
 40. [x] Season end (board 8): the arrival in the Kyoto rock garden, season totals, your scoops, "Ver o mural" (hall of fame), "Cavar o próximo", the golden spoon for those online
 41. [x] Mobile (Mobile page): the three views portrait, one thumb, tap to dig, share sheet
 42. [x] Link to the Steam page
-43. [ ] Open Graph tags and a static preview image so a pasted link shows the hole
-44. [ ] Board renders from the game (`tools/designs/`): replace the canvas images with real screenshots, re-export `/designs`
+43. [x] Open Graph tags and a static preview image so a pasted link shows the hole
+44. [x] Board renders from the game (`tools/designs/`): replace the canvas images with real screenshots, re-export `/designs`
 45. [x] Playwright smoke: open, dig, depth goes up, switch tabs, share dialog opens
 
 **Exit:** a friend opens the link on their phone, digs, sees others' spoons, reaches a milestone and a season end (on a test room) and shares the card without help.
@@ -104,7 +104,7 @@
 50. [~] Monitoring: an uptime check and the room's own counters (players, scoops/s, dropped messages), no personal data (`/health` reports players, scoops and dropped/bad messages with no personal data; the uptime check needs an account)
 51. [x] Performance budget in CI from `CLAUDE.md` (`npm run budget`: initial JS under 300 KB gz; a WebGL page's Lighthouse score is too noisy in CI, so run Lighthouse by hand before launch)
 52. [x] README write-up: architecture, the interesting problems (reconciliation, rate limiting, persistence, seasons), load-test numbers, trade-offs
-53. [ ] Full security audit of the repo before it goes public
+53. [x] Full security audit of the repo before it goes public
 
 **Exit:** the deployed room survives the load test, and the README explains it.
 

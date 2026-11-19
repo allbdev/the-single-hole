@@ -647,7 +647,11 @@ export class Ui {
 
   placeTag(el: HTMLElement, x: number, y: number, visible: boolean): void {
     el.classList.toggle("hidden", !visible);
-    if (visible) place(el, x, y, " translate(-50%, -100%)");
+    if (!visible) return;
+    // Keep tags inside the screen (phones are narrow).
+    const half = (el.offsetWidth || 80) / 2 + 6;
+    const w = this.root.clientWidth || window.innerWidth;
+    place(el, Math.min(Math.max(x, half), w - half), Math.max(y, 30), " translate(-50%, -100%)");
   }
 
   // ---------- away / replay ----------

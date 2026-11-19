@@ -1,6 +1,16 @@
 # Designs
 
-Copies of the boards on the design canvas "Um Buraco Só — Mockups" (https://claude.ai/artifact/EYzagD2x24kd3Ay4Thg2gf). The canvas is the editable source; these JPGs are exports. Reference only, not shipped.
+Copies of the boards on the design canvas "Um Buraco Só — Mockups" (https://claude.ai/artifact/EYzagD2x24kd3Ay4Thg2gf). Reference only, not shipped.
+
+Every image is rendered from the game itself, so the mockups match the game: the screens are real in-game screenshots (PT-BR, a room seeded at the canvas depth with bots), the spoons and core samples are the game's own models. To regenerate after a change that affects what a board shows:
+
+```sh
+npx tsx tools/designs/render-boards.ts --out=/tmp/boards   # starts its own room, Vite and bots
+cp /tmp/boards/designs/*.jpg designs/                       # these exports
+cp /tmp/boards/og.jpg public/og.jpg                         # the link preview
+```
+
+Then upload `/tmp/boards/screens/*` (or the JPGs) to the canvas and point its boards at the new images (see `CLAUDE.md`).
 
 | File | Canvas board | Page |
 |---|---|---|
@@ -15,6 +25,4 @@ Copies of the boards on the design canvas "Um Buraco Só — Mockups" (https://c
 | `09-Mobile.jpg` | Phone layouts | Mobile |
 | `10-Spoons.jpg` | Spoons: the players | Spoons |
 | `11-Layers.jpg` | Layers as core samples | Layers |
-| `12-Direction.jpg` | Art direction | Art direction |
-
-The current images are renders made for the mockups, not from the game. Once the game renders, board images come from the game itself (`tools/designs/`), so the mockups match it. When a board changes, re-export its JPG here; when the game changes what a board shows, update the board (see `CLAUDE.md`).
+| `12-Direction.jpg` | Art direction (a text board, exported from the canvas) | Art direction |
