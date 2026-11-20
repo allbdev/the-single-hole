@@ -62,7 +62,7 @@ All eight screens and the phone layouts are built.
 | # | Board | What it shows |
 |---|---|---|
 | 1 | Landing | The hole photo, world depth, live count, PT/EN toggle, "Pegar uma colher" and "Ver o corte" |
-| 2 | Dig view | Looking down the hole; each planted spoon is a player with a country tag and scoop count; a tape measure with the depth; the feed; your scoops; "click the hole or press Space" |
+| 2 | Dig view | Looking down the hole; each spoon is a player, held over the rim by a hand we don't see, with a country tag and scoop count; a tape measure with the depth; the feed; your scoops; "click the hole or press Space" |
 | 3 | Cross-section | A cut block of ground with the eight layers, "we are here", % of the way to Japan, when the current layer started |
 | 4 | World | The globe with dots per country, per-country totals ("Quem está cavando"), Brazil → Japan progress, ETA at this week's pace |
 | 5 | New layer reached | Milestone card: layer name, depth, how long it took, how much you dug, the layer's joke |
@@ -75,7 +75,7 @@ Navigation is three tabs: **Buraco** (hole), **Corte** (cross-section), **Mundo*
 
 ## Spoons
 
-There are no characters: a player is a spoon. Everyone starts with the teaspoon; the rest unlock with your own scoop count, kept in the browser (no account).
+There are no characters: a player is a spoon, held by someone we don't see. It hovers over the rim and, on each scoop, reaches into the lip, scoops, lifts out and flicks the dirt onto the mound. Everyone starts with the teaspoon; the rest unlock with your own scoop count, kept in the browser (no account).
 
 | Spoon | Unlock |
 |---|---|

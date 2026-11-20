@@ -20,7 +20,7 @@ Player-facing text is English by default, with a PT-BR toggle in the corner. Cod
 
 ## What you see
 
-- **Buraco (hole):** a photo-style lawn with the hole in the middle. Every player is a spoon planted around the rim, tagged with their country and scoop count; your spoon is orange. Click, tap or press Space to dig. A tape measure reads the world's depth; a feed says who joined and what was found.
+- **Buraco (hole):** a photo-style lawn with the hole in the middle. Every player is a spoon held over the rim by a hand you don't see, tagged with their country and scoop count; on each scoop it reaches into the hole, scoops and flicks the dirt onto the mound. Your tag is orange. Click, tap or press Space to dig. A tape measure reads the world's depth; a feed says who joined and what was found.
 - **Corte (cut):** a block of ground with the eight layers, from Quintal to Núcleo, and a thin shaft showing how far the world has got.
 - **Mundo (world):** the globe with a dot per country digging right now, the top countries, and the year we reach Japan at this week's pace.
 - **Milestones** when the world enters a new layer, a **share card** (1200 × 630, numbers only), **spoons** that unlock with your own scoops, **"while you were away"** and a **replay** of the last minute when few people are online, **night lighting** that follows the time at the hole (Brasília), and a **season end**: when the hole comes out in a Kyoto rock garden, the season goes into the hall of fame, everyone online gets the golden spoon, and a new hole starts.

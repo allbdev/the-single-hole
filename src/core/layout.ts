@@ -71,7 +71,7 @@ export function rimSlots(rim: RimSpoon[], you: string | null, max = 16): RimSlot
   for (const r of others) {
     let angle = hash01(r.id) * Math.PI * 2;
     // Nudge away from neighbours so tags don't pile up.
-    for (let tries = 0; tries < 12 && used.some((a) => angularGap(a, angle) < 0.4); tries++) angle += 0.23;
+    for (let tries = 0; tries < 12 && used.some((a) => angularGap(a, angle) < 0.48); tries++) angle += 0.23;
     used.push(angle);
     slots.push({
       id: r.id,

@@ -37,7 +37,8 @@ import type { RimSlot } from "../core/layout";
 import type { Quality } from "../core/quality";
 import type { Lighting } from "../core/sun";
 import { ValueNoise, mulberry32 } from "./noise";
-import { SPOON_LENGTH, buildSpoon, type TextureFactory } from "./spoon-model";
+import { DIG_SECONDS, FLICK_AT, digPose, hoverOffset, retrigger } from "./dig-motion";
+import { buildSpoon, type TextureFactory } from "./spoon-model";
 import type { View } from "./stage";
 import {
   brushedCanvas,
@@ -81,16 +82,33 @@ const CAMERAS: Record<CameraMode, { pos: Vector3; look: Vector3; fov: number }> 
   arrival: { pos: new Vector3(2.4, 4.2, 6.4), look: new Vector3(0.6, 0, 0), fov: 40 },
 };
 
+/** A spoon held by someone we don't see: it hovers over the rim and digs into the hole. */
 interface PlantedSpoon {
   slot: RimSlot;
   spoon: SpoonId;
+  /** At the resting grip point, turned to face out from the hole. */
   outer: Group;
-  twist: Group;
+  /** The invisible hand's reach: moves the bowl in toward the hole and up/down. */
+  arm: Group;
+  /** Tilts the spoon around its bowl (pitch, roll). */
+  tilt: Group;
   model: Group;
+  clump: Mesh;
+  shadow: Mesh | null;
+  /** Dig progress 0..1 (0 = hovering). */
   digT: number;
+  digSeconds: number;
+  phase: number;
   ghost: boolean;
   life: number;
 }
+
+/** Where the bowl hovers: just outside the lip, a little above the mound. */
+const BOWL_HEIGHT = 0.32;
+const BOWL_RADIUS = 1.4;
+/** Handles swing ~40° to the same side (a pinwheel): a hand reaching in at an angle. */
+const HANDLE_TURN = 0.7;
+const SPOON_SCALE = 1.6;
 
 interface Particle {
   pos: Vector3;
@@ -122,6 +140,14 @@ export class HoleScene implements View {
   private shakeT = 0;
   private readonly reducedMotion: boolean;
   readonly tapeAnchor = new Vector3(0.95, 0.25, 1.55);
+  private readonly clumpMaterial = new MeshStandardMaterial({ color: "#2b1d12", roughness: 1 });
+  private readonly shadowGeometry = new PlaneGeometry(0.5, 0.5);
+  private readonly shadowMaterial = new MeshBasicMaterial({
+    map: HoleScene.shadowTexture(),
+    transparent: true,
+    depthWrite: false,
+    color: "#000000",
+  });
   private get mound(): number {
     return this.theme === "garden" ? 0.3 : 1;
   }
@@ -185,6 +211,20 @@ export class HoleScene implements View {
   }
 
   // ---------- building ----------
+
+  /** A soft round blob for contact shadows. */
+  static shadowTexture(): CanvasTexture {
+    const c = makeCanvas(64, 64);
+    const ctx = c.getContext("2d")!;
+    const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, "rgba(255,255,255,1)");
+    g.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 64, 64);
+    const t = new CanvasTexture(c);
+    // Used as alpha: white = opaque black shadow.
+    return t;
+  }
 
   /** Radial ground: rings around the hole, so the rim is a smooth circle. */
   static groundGeometry(rings: number, segments: number, mound = 1): BufferGeometry {
@@ -661,7 +701,7 @@ export class HoleScene implements View {
     const keep = new Set(slots.map((s) => s.id));
     for (const [id, planted] of this.spoons) {
       if (!keep.has(id)) {
-        this.scene.remove(planted.outer);
+        this.removeSpoon(planted);
         this.spoons.delete(id);
       }
     }
@@ -672,26 +712,33 @@ export class HoleScene implements View {
         existing.slot = slot;
         continue;
       }
-      if (existing) this.scene.remove(existing.outer);
+      if (existing) this.removeSpoon(existing);
       const planted = this.plant(slot, spoon, false);
       this.spoons.set(slot.id, planted);
     }
   }
 
   private plant(slot: RimSlot, spoon: SpoonId, ghost: boolean): PlantedSpoon {
+    const r = BOWL_RADIUS + (slot.radius - 1.8) * 0.5;
+    const x = Math.cos(slot.angle) * r;
+    const z = -Math.sin(slot.angle) * r;
+    // The rig pivots at the bowl: the bowl's path aims straight into the hole while the handle
+    // points out and to the side, toward a hand we don't draw.
     const outer = new Group();
-    const x = Math.cos(slot.angle) * slot.radius;
-    const z = -Math.sin(slot.angle) * slot.radius;
-    outer.position.set(x, this.gh(x, z) - 0.03, z);
-    outer.rotation.order = "YXZ";
-    outer.rotation.y = Math.atan2(x, z);
-    outer.rotation.x = slot.tilt;
-    const twist = new Group();
-    twist.rotation.y = slot.twist;
+    outer.position.set(x, this.gh(x, z) + BOWL_HEIGHT, z);
+    outer.rotation.y = Math.atan2(x, z); // local +Z = away from the hole
+    const arm = new Group();
+    arm.rotation.y = HANDLE_TURN + Math.sin(slot.twist) * 0.1;
+    const tilt = new Group();
     const model = buildSpoon(spoon, this.textureFactory);
-    model.rotation.x = Math.PI / 2;
-    model.position.y = SPOON_LENGTH * 0.9;
-    model.scale.setScalar(1.6);
+    model.scale.setScalar(SPOON_SCALE);
+    // Bowl center at the pivot, handle along +Z (out).
+    model.position.set(0, -0.03 * SPOON_SCALE, -0.17 * SPOON_SCALE);
+    const clump = new Mesh(new IcosahedronGeometry(0.045, 1), this.clumpMaterial);
+    clump.position.set(0, 0.035, 0.17);
+    clump.scale.set(1.2, 0.7, 1.4);
+    clump.visible = false;
+    model.add(clump);
     model.traverse((o) => {
       o.castShadow = this.quality.shadows;
       if (ghost && o instanceof Mesh) {
@@ -700,35 +747,72 @@ export class HoleScene implements View {
         (o.material as MeshStandardMaterial).opacity = 0;
       }
     });
-    twist.add(model);
-    outer.add(twist);
+    tilt.add(model);
+    arm.add(tilt);
+    outer.add(arm);
     this.scene.add(outer);
-    return { slot, spoon, outer, twist, model, digT: 0, ghost, life: ghost ? 1.6 : Infinity };
+    // A soft contact shadow sells the float when the sun doesn't cast real shadows.
+    let shadow: Mesh | null = null;
+    if (!this.quality.shadows) {
+      shadow = new Mesh(this.shadowGeometry, this.shadowMaterial.clone());
+      shadow.rotation.x = -Math.PI / 2;
+      shadow.renderOrder = 1;
+      this.scene.add(shadow);
+    }
+    return {
+      slot,
+      spoon,
+      outer,
+      arm,
+      tilt,
+      model,
+      clump,
+      shadow,
+      digT: 0,
+      digSeconds: DIG_SECONDS.others,
+      phase: slot.twist * 3.7,
+      ghost,
+      life: ghost ? 1.6 : Infinity,
+    };
   }
 
-  /** World position for a rim tag (above the spoon's bowl). */
+  private removeSpoon(p: PlantedSpoon): void {
+    this.scene.remove(p.outer);
+    if (p.shadow) this.scene.remove(p.shadow);
+  }
+
+  /** World position of a spoon's bowl. */
+  private bowlPosition(p: PlantedSpoon, out: Vector3): Vector3 {
+    p.model.updateWorldMatrix(true, false);
+    return out.set(0, 0.03, 0.17).applyMatrix4(p.model.matrixWorld);
+  }
+
+  /** World position for a rim tag: above the middle of the handle, so it never covers the bowl. */
   tagAnchor(id: string, out: Vector3): Vector3 | null {
     const planted = this.spoons.get(id);
     if (!planted) return null;
     planted.model.updateWorldMatrix(true, false);
-    out.set(0, 0, 0.12).applyMatrix4(planted.model.matrixWorld);
-    out.y += 0.18;
+    out.set(0, 0.04, 0.62).applyMatrix4(planted.model.matrixWorld);
+    out.y += 0.12;
     return out;
   }
 
-  /** A spoon digs: lean into the hole and back, throw dirt. */
+  /** A spoon digs: reach into the lip, scoop, lift out, flick the dirt onto the mound. */
   dig(id: string): void {
     const planted = this.spoons.get(id);
     if (!planted) return;
-    planted.digT = 1;
-    this.puff(planted.outer.position, 6);
+    planted.digT = retrigger(planted.digT);
+    planted.digSeconds = DIG_SECONDS.others;
   }
 
-  /** Your own scoop: the same, plus a small camera shake unless reduced motion is on. */
+  /** Your own scoop: quicker, plus a small camera shake unless reduced motion is on. */
   digYou(id: string): void {
-    this.dig(id);
-    this.puff(new Vector3(0, -0.3, 0), 8);
-    if (!this.reducedMotion) this.shakeT = 0.12;
+    const planted = this.spoons.get(id);
+    if (planted) {
+      planted.digT = retrigger(planted.digT);
+      planted.digSeconds = DIG_SECONDS.you;
+    }
+    if (!this.reducedMotion) this.shakeT = 0.08;
   }
 
   /** Replay: a ghost spoon appears at a country's place and digs once. */
@@ -737,15 +821,32 @@ export class HoleScene implements View {
     const slot: RimSlot = {
       id: `ghost${Math.random()}`,
       angle,
-      radius: 2.0,
-      tilt: 0.5,
+      radius: 1.9,
+      tilt: 0,
       twist: angle * 3,
       you: false,
     };
     const g = this.plant(slot, "teaspoon", true);
-    g.digT = 1;
+    g.digT = 0.0001;
     this.ghosts.push(g);
-    this.puff(g.outer.position, 4);
+  }
+
+  /** Dirt thrown from a point: `outward` sends it away from the hole (the flick). */
+  private throwDirt(at: Vector3, count: number, outward: number): void {
+    if (this.reducedMotion) return;
+    const rand = Math.random;
+    const out = new Vector3(at.x, 0, at.z).normalize();
+    for (let i = 0; i < count && this.particles.length < 220; i++) {
+      this.particles.push({
+        pos: at.clone(),
+        vel: new Vector3(
+          (rand() - 0.5) * 0.8 + out.x * outward,
+          0.8 + rand() * 1.4,
+          (rand() - 0.5) * 0.8 + out.z * outward,
+        ),
+        life: 0.9 + rand() * 0.4,
+      });
+    }
   }
 
   private puff(at: Vector3, count: number): void {
@@ -795,13 +896,28 @@ export class HoleScene implements View {
     this.camera.lookAt(this.camLook);
     if (this.grassShader) this.grassShader.uniforms.uTime.value = this.reducedMotion ? 0 : time;
 
+    const bowl = new Vector3();
     const animate = (p: PlantedSpoon) => {
-      if (p.digT > 0) {
-        p.digT = Math.max(0, p.digT - dt * 3.2);
-        const phase = Math.sin((1 - p.digT) * Math.PI);
-        p.outer.rotation.x = p.slot.tilt - phase * 0.75;
-      } else {
-        p.outer.rotation.x = p.slot.tilt;
+      const before = p.digT;
+      if (p.digT > 0) p.digT = Math.min(1, p.digT + dt / p.digSeconds);
+      const pose = digPose(p.digT >= 1 ? 0 : p.digT);
+      const hover = this.reducedMotion ? { lift: 0, yaw: 0, pitch: 0 } : hoverOffset(time, p.phase);
+      // Reach in the hole's frame (radial), tilt in the spoon's own frame.
+      p.arm.position.set(0, pose.lift + hover.lift, -pose.inward);
+      p.arm.rotation.y = HANDLE_TURN + Math.sin(p.slot.twist) * 0.1 + hover.yaw;
+      p.tilt.rotation.set(pose.pitch + hover.pitch, 0, pose.roll);
+      p.clump.visible = pose.loaded;
+      // Bowl hits the dirt: a puff at the lip. Flick: the clump flies onto the mound.
+      if (before < 0.26 && p.digT >= 0.26) this.throwDirt(this.bowlPosition(p, bowl), 4, -0.2);
+      if (before < FLICK_AT && p.digT >= FLICK_AT) this.throwDirt(this.bowlPosition(p, bowl), 9, 1.4);
+      if (p.digT >= 1) p.digT = 0;
+      if (p.shadow) {
+        this.bowlPosition(p, bowl);
+        const ground = this.gh(bowl.x, bowl.z);
+        const h = Math.max(0, bowl.y - ground);
+        p.shadow.position.set(bowl.x, ground + 0.012, bowl.z);
+        p.shadow.scale.setScalar(0.7 + h * 0.6);
+        (p.shadow.material as MeshBasicMaterial).opacity = Math.max(0, 0.42 - h * 0.28) * (p.ghost ? 0.5 : 1);
       }
     };
     for (const p of this.spoons.values()) animate(p);
@@ -811,10 +927,11 @@ export class HoleScene implements View {
       g.life -= dt;
       const opacity = Math.min(1, Math.min(g.life, 1.6 - g.life) * 3) * 0.75;
       g.model.traverse((o) => {
-        if (o instanceof Mesh) (o.material as MeshStandardMaterial).opacity = Math.max(0, opacity);
+        if (o instanceof Mesh && o !== g.clump)
+          (o.material as MeshStandardMaterial).opacity = Math.max(0, opacity);
       });
       if (g.life <= 0) {
-        this.scene.remove(g.outer);
+        this.removeSpoon(g);
         this.ghosts.splice(i, 1);
       }
     }
