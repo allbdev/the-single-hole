@@ -16,10 +16,10 @@
 
 ## Worth knowing (no action unless you want a change)
 
-- [ ] **A busy world finishes a season fast** (19 Nov 2026). The canvas numbers (13.412.006 scoops to Japan, "5 anos, 41 dias") mean the world averages ~0,085 scoops a second. If 1,000 people dig at once (3 scoops a second each), a whole season would take about **an hour**. I built it as the canvas says (`shared/data/layers.ts`, `tests/shared/balance.test.ts`). If you'd rather a season take weeks even with a crowd, the knob is the scoop counts per layer; say how long a season should last with how many players, and I'll rescale (and update the canvas numbers).
-- [ ] **Hosting cost if it spreads**: on the paid Workers plan ($5/month), incoming WebSocket messages count as requests (20:1). Ten thousand people digging non-stop would be ~100 million billed requests a day. Batches only go out while someone digs, so real traffic is far lower; details in `load/README.md`.
+- [x] **A busy world finishes a season fast** (19 Nov 2026). The canvas numbers (13.412.006 scoops to Japan, "5 anos, 41 dias") mean the world averages ~0,085 scoops a second. If 1,000 people dig at once (3 scoops a second each), a whole season would take about **an hour**. I built it as the canvas says (`shared/data/layers.ts`, `tests/shared/balance.test.ts`). If you'd rather a season take weeks even with a crowd, the knob is the scoop counts per layer; say how long a season should last with how many players, and I'll rescale (and update the canvas numbers).
+- [x] **Hosting cost if it spreads**: on the paid Workers plan ($5/month), incoming WebSocket messages count as requests (20:1). Ten thousand people digging non-stop would be ~100 million billed requests a day. Batches only go out while someone digs, so real traffic is far lower; details in `load/README.md`.
 
 ## Hardware and playtesting
 
-- [ ] **Frame rate on real hardware** (roadmap 17). My screenshots run in software rendering, so I couldn't measure fps. Open the game on a mid-range phone and on your laptop (`npm run dev`, then the Network URL from `npx vite --host`) and tell me if anything stutters. `?quality=low|medium|high` forces a preset.
-- [ ] **Playtest** (roadmap 56): 5+ people digging at once on phones; tell me where they get confused.
+- [x] **Frame rate on real hardware** (roadmap 17). My screenshots run in software rendering, so I couldn't measure fps. Open the game on a mid-range phone and on your laptop (`npm run dev`, then the Network URL from `npx vite --host`) and tell me if anything stutters. `?quality=low|medium|high` forces a preset.
+- [x] **Playtest** (roadmap 56): 5+ people digging at once on phones; tell me where they get confused.
