@@ -1099,8 +1099,18 @@ a:hover {
   }
   .landing .actions .btn-primary,
   .landing .actions .btn-ghost {
-    flex: 1;
-    min-width: 0;
+    flex: 1 1 0;
+    min-width: max-content;
+    padding-inline: 16px;
+    white-space: nowrap;
+  }
+  .landing .actions .btn-primary {
+    flex-grow: 1.4;
+  }
+  /* The fine print gets its own row under the buttons. */
+  .landing .fine {
+    flex-basis: 100%;
+    text-align: center;
   }
 
   .depth-panel {
