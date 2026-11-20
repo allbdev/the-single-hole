@@ -21,16 +21,24 @@ import {
 import { MAX_FAME_ENTRIES, emptySnapshot, type Snapshot } from "./snapshot";
 import { TokenBucket } from "../shared/token-bucket";
 
-/** The broadcast target for every connection. */
+/** The broadcast target for every player in the room. People waiting in the line don't get it. */
 export const ALL = "*";
 
+/** What the room asks its adapter to do. */
 export interface Output {
   send: [target: string, msg: ServerMessage][];
   close: string[];
+  /** Connections that left the line for the room; adapters that persist connection info re-save it. */
+  admitted: string[];
 }
 
 export interface RoomOptions {
-  maxConnections: number;
+  /** Players in the room at once. Past this, newcomers wait in the line until someone leaves. */
+  maxPlayers: number;
+  /** Safety cap on the line, so a flood of sockets can't exhaust memory. Past it: "full". */
+  maxWaiting: number;
+  /** Minimum gap between line position updates (ms). */
+  lineMs: number;
   /** Minimum gap between `state` broadcasts (ms). 150 ms ≈ 6.7 a second. */
   stateMs: number;
   rimMs: number;
@@ -42,7 +50,9 @@ export interface RoomOptions {
 }
 
 export const DEFAULT_ROOM_OPTIONS: RoomOptions = {
-  maxConnections: 10_000,
+  maxPlayers: 10_000,
+  maxWaiting: 50_000,
+  lineMs: 2_000,
   stateMs: 150,
   rimMs: 1_000,
   worldMs: 5_000,
@@ -84,6 +94,8 @@ interface Conn {
   streak: number;
   streakAnnounced: boolean;
   joinedAnnounced: boolean;
+  /** Place in the line (lower goes first); null once in the room. */
+  ticket: number | null;
 }
 
 interface IpState {
@@ -100,6 +112,8 @@ export interface ConnectionInfo {
   spoon: SpoonId;
   claimed: number;
   hello: boolean;
+  /** Set while waiting in the line (lower goes first); missing once in the room. */
+  ticket?: number;
 }
 
 /** Counters for monitoring. No personal data. */
@@ -111,7 +125,7 @@ export interface RoomCounters {
   closedForStrikes: number;
 }
 
-const empty = (): Output => ({ send: [], close: [] });
+const empty = (): Output => ({ send: [], close: [], admitted: [] });
 
 /**
  * The one authoritative room. Pure: no timers, sockets or storage. Adapters feed it connections,
@@ -124,7 +138,18 @@ export class Room {
   private countryScoops: Map<CountryCode, number>;
   private days: Map<number, number>;
   private fame: FameEntry[];
+  /** Players in the room. */
   private readonly conns = new Map<string, Conn>();
+  /** The line: connections waiting for a slot, in ticket order (see `lineOrder`). */
+  private line = new Map<string, Conn>();
+  private nextTicket = 1;
+  /** Set when connections came back from hibernation out of order. */
+  private lineUnsorted = false;
+  /** Positions changed since the last line update (everyone in line gets theirs). */
+  private lineDirty = false;
+  /** Said hello in line but not yet told their place (sent on the next line update). */
+  private readonly linePending = new Set<string>();
+  private lastLineAt = -Infinity;
   private readonly ips = new Map<string, IpState>();
   private feed: FeedItem[] = [];
   private pendingFeed: FeedItem[] = [];
@@ -179,6 +204,16 @@ export class Room {
     return this.conns.size;
   }
 
+  /** People waiting in the line. */
+  get waiting(): number {
+    return this.line.size;
+  }
+
+  /** True for players in the room; false for the line and unknown ids (they get no broadcasts). */
+  inRoom(id: string): boolean {
+    return this.conns.has(id);
+  }
+
   get seasonInfo(): SeasonInfo {
     return { ...this.season, layerEnteredAt: [...this.season.layerEnteredAt] };
   }
@@ -206,39 +241,69 @@ export class Room {
 
   /** True when the room has nothing left to broadcast (an adapter may stop ticking / hibernate). */
   get idle(): boolean {
-    if (this.stateDirty || this.rimDirty || this.worldDirty || this.pendingFeed.length > 0) return false;
+    if (!this.idleExceptHandshakes || this.lineDirty || this.linePending.size > 0) return false;
     for (const c of this.conns.values()) if (!c.hello) return false;
+    for (const c of this.line.values()) if (!c.hello) return false;
     return true;
   }
 
-  /** Only waiting for hellos: an adapter can tick slowly. */
+  /** Only waiting for hellos or a line update: an adapter can tick slowly. */
   get idleExceptHandshakes(): boolean {
-    return !this.stateDirty && !this.rimDirty && !this.worldDirty && this.pendingFeed.length === 0;
+    return (
+      !this.stateDirty &&
+      !this.rimDirty &&
+      !this.worldDirty &&
+      this.pendingFeed.length === 0 &&
+      !this.canAdmit
+    );
+  }
+
+  /** A slot is free and someone is waiting for it. */
+  private get canAdmit(): boolean {
+    return this.line.size > 0 && this.conns.size < this.opts.maxPlayers;
   }
 
   // ---------- connections ----------
 
   connect(id: string, info: { ip: string; country: CountryCode; region?: RegionCode }, now: number): Output {
     const out = empty();
-    if (this.conns.size >= this.opts.maxConnections) {
+    // Newcomers never skip the line, even when a slot just opened and no tick has admitted anyone.
+    const waits = this.conns.size >= this.opts.maxPlayers || this.line.size > 0;
+    if (waits && this.line.size >= this.opts.maxWaiting) {
       this.counters.rejectedConnections++;
       out.send.push([id, { t: "error", code: "full" }]);
       out.close.push(id);
       return out;
     }
-    let ip = this.ips.get(info.ip);
+    const ip = this.ips.get(info.ip);
     if (ip && ip.connections >= LIMITS.connectionsPerIp) {
       this.counters.rejectedConnections++;
       out.send.push([id, { t: "error", code: "tooManyFromIp" }]);
       out.close.push(id);
       return out;
     }
+    const c = this.newConn(id, info, now);
+    if (waits) {
+      c.ticket = this.nextTicket++;
+      this.line.set(id, c);
+    } else {
+      this.conns.set(id, c);
+    }
+    return out;
+  }
+
+  private newConn(
+    id: string,
+    info: { ip: string; country: CountryCode; region?: RegionCode },
+    now: number,
+  ): Conn {
+    let ip = this.ips.get(info.ip);
     if (!ip) {
       ip = { connections: 0, bucket: new TokenBucket(LIMITS.ipScoopsPerSecond, LIMITS.ipScoopBurst, now) };
       this.ips.set(info.ip, ip);
     }
     ip.connections++;
-    this.conns.set(id, {
+    return {
       id,
       connectedAt: now,
       ip: info.ip,
@@ -255,13 +320,13 @@ export class Room {
       streak: 0,
       streakAnnounced: false,
       joinedAnnounced: false,
-    });
-    return out;
+      ticket: null,
+    };
   }
 
   /** What an adapter must keep to rebuild a connection after the process sleeps (hibernation). */
   connectionInfo(id: string): ConnectionInfo | null {
-    const c = this.conns.get(id);
+    const c = this.find(id);
     if (!c) return null;
     return {
       ip: c.ip,
@@ -270,27 +335,64 @@ export class Room {
       spoon: c.spoon,
       claimed: c.claimed,
       hello: c.hello,
+      ...(c.ticket !== null ? { ticket: c.ticket } : {}),
     };
+  }
+
+  private find(id: string): Conn | undefined {
+    return this.conns.get(id) ?? this.line.get(id);
   }
 
   /**
    * Re-register a connection that survived while the room was asleep (Durable Object hibernation).
-   * Rate buckets start fresh; the rest comes back as it was.
+   * It goes back where it was (room or line, same place in the line). Rate buckets start fresh.
    */
   resume(id: string, info: ConnectionInfo, now: number): void {
-    if (this.conns.has(id)) return;
-    this.connect(id, { ip: info.ip, country: info.country, region: info.region }, now);
-    const c = this.conns.get(id);
-    if (!c) return;
+    if (this.find(id)) return;
+    const c = this.newConn(id, info, now);
     c.spoon = info.spoon;
     c.claimed = info.claimed;
     c.hello = info.hello;
+    if (info.ticket === undefined) {
+      this.conns.set(id, c);
+      return;
+    }
+    c.ticket = info.ticket;
+    this.line.set(id, c);
+    this.nextTicket = Math.max(this.nextTicket, info.ticket + 1);
+    this.lineUnsorted = true;
+    this.lineDirty = true;
+  }
+
+  /** The line in ticket order. Sorting happens at most once after a wake-up. */
+  private lineOrder(): IterableIterator<Conn> {
+    if (this.lineUnsorted) {
+      this.line = new Map([...this.line].sort((a, b) => a[1].ticket! - b[1].ticket!));
+      this.lineUnsorted = false;
+    }
+    return this.line.values();
+  }
+
+  /** 1-based place in the line, or 0 when not in it. */
+  linePosition(id: string): number {
+    let n = 0;
+    for (const c of this.lineOrder()) {
+      n++;
+      if (c.id === id) return n;
+    }
+    return 0;
   }
 
   disconnect(id: string): void {
-    const c = this.conns.get(id);
+    const c = this.find(id);
     if (!c) return;
-    this.conns.delete(id);
+    if (c.ticket !== null) {
+      this.line.delete(id);
+      this.linePending.delete(id);
+      this.lineDirty = true;
+    } else {
+      this.conns.delete(id);
+    }
     const ip = this.ips.get(c.ip);
     if (ip) {
       ip.connections--;
@@ -307,7 +409,7 @@ export class Room {
 
   message(id: string, raw: unknown, now: number): Output {
     const out = empty();
-    const c = this.conns.get(id);
+    const c = this.find(id);
     if (!c) return out;
     if (c.messages.take(1, now) === 0) {
       this.strike(c, out);
@@ -322,20 +424,32 @@ export class Room {
       this.strike(c, out);
       return out;
     }
+    if (msg.t === "hello") {
+      if (msg.v !== PROTOCOL_VERSION) {
+        out.send.push([id, { t: "error", code: "version" }]);
+        out.close.push(id);
+        return out;
+      }
+      if (c.hello) {
+        this.strike(c, out);
+        return out;
+      }
+      c.hello = true;
+      c.spoon = msg.spoon;
+      c.claimed = msg.scoops;
+    }
+    if (c.ticket !== null) {
+      // In the line: no room data, no digging. Only the place in the line, and a spoon to hold.
+      if (msg.t === "hello") {
+        // The newest ticket is always last: answer in O(1). Anyone else gets their place on the
+        // next line update, so a flood of hellos can't make the room scan the line each time.
+        if (c.ticket === this.nextTicket - 1) out.send.push([id, { t: "line", position: this.line.size }]);
+        else this.linePending.add(id);
+      } else if (msg.t === "spoon") c.spoon = msg.spoon;
+      return out;
+    }
     switch (msg.t) {
       case "hello": {
-        if (msg.v !== PROTOCOL_VERSION) {
-          out.send.push([id, { t: "error", code: "version" }]);
-          out.close.push(id);
-          return out;
-        }
-        if (c.hello) {
-          this.strike(c, out);
-          return out;
-        }
-        c.hello = true;
-        c.spoon = msg.spoon;
-        c.claimed = msg.scoops;
         this.stateDirty = true;
         this.rimDirty = true;
         this.worldDirty = true;
@@ -591,13 +705,16 @@ export class Room {
 
   tick(now: number): Output {
     const out = empty();
-    for (const c of this.conns.values()) {
-      if (!c.hello && now - c.connectedAt > HELLO_TIMEOUT_MS) {
-        this.counters.badMessages++;
-        out.close.push(c.id);
-        this.disconnect(c.id);
+    for (const group of [this.conns, this.line]) {
+      for (const c of group.values()) {
+        if (!c.hello && now - c.connectedAt > HELLO_TIMEOUT_MS) {
+          this.counters.badMessages++;
+          out.close.push(c.id);
+          this.disconnect(c.id);
+        }
       }
     }
+    this.admit(now, out);
     if (now - this.lastSurgeCheckAt >= 60_000) {
       this.lastSurgeCheckAt = now;
       this.checkSurge(now);
@@ -619,7 +736,40 @@ export class Room {
       this.lastWorldAt = now;
       out.send.push([ALL, { t: "world", countries: this.countryStats(), week: this.weekRate(now) }]);
     }
+    const lineDue = this.lineDirty || this.linePending.size > 0;
+    if (lineDue && now - this.lastLineAt >= this.opts.lineMs) {
+      // One pass over the line, at most every lineMs, however many joined or left.
+      const everyone = this.lineDirty;
+      this.lineDirty = false;
+      this.lastLineAt = now;
+      let position = 0;
+      for (const c of this.lineOrder()) {
+        position++;
+        if (c.hello && (everyone || this.linePending.has(c.id)))
+          out.send.push([c.id, { t: "line", position }]);
+      }
+      this.linePending.clear();
+    }
     return out;
+  }
+
+  /** Move people from the front of the line into free slots. */
+  private admit(now: number, out: Output): void {
+    while (this.canAdmit) {
+      const c = this.lineOrder().next().value!;
+      this.line.delete(c.id);
+      this.linePending.delete(c.id);
+      c.ticket = null;
+      this.conns.set(c.id, c);
+      this.lineDirty = true;
+      out.admitted.push(c.id);
+      if (c.hello) {
+        this.stateDirty = true;
+        this.rimDirty = true;
+        this.worldDirty = true;
+        out.send.push([c.id, this.welcome(c, now)]);
+      }
+    }
   }
 
   private checkSurge(now: number): void {

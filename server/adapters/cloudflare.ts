@@ -48,6 +48,8 @@ interface Attachment extends ConnectionInfo {
 export class RoomObject extends DurableObject<Env> {
   private room!: Room;
   private timer: ReturnType<typeof setTimeout> | null = null;
+  /** Socket → connection id, so broadcasts can skip the line without reading attachments. */
+  private readonly ids = new WeakMap<WebSocket, string>();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -79,6 +81,7 @@ export class RoomObject extends DurableObject<Env> {
       return Response.json({
         ok: true,
         players: this.room.players,
+        waiting: this.room.waiting,
         total: this.room.totalScoops,
         ...this.room.counters,
       });
@@ -100,10 +103,15 @@ export class RoomObject extends DurableObject<Env> {
       hello: false,
     };
     this.ctx.acceptWebSocket(server, [id]);
-    server.serializeAttachment(info);
-    this.deliver(
-      this.room.connect(id, { ip: info.ip, country: info.country, region: info.region }, Date.now()),
+    const out = this.room.connect(
+      id,
+      { ip: info.ip, country: info.country, region: info.region },
+      Date.now(),
     );
+    // Saved after connect so a place in the line survives hibernation.
+    const saved = this.room.connectionInfo(id);
+    server.serializeAttachment(saved ? { ...saved, id } : info);
+    this.deliver(out);
     this.schedule();
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -156,9 +164,14 @@ export class RoomObject extends DurableObject<Env> {
   }
 
   private deliver(out: Output): void {
+    for (const id of out.admitted) {
+      // Out of the line: forget the ticket, or a wake-up would put them back in line.
+      const info = this.room.connectionInfo(id);
+      if (info) for (const ws of this.ctx.getWebSockets(id)) ws.serializeAttachment({ ...info, id });
+    }
     for (const [target, msg] of out.send) {
       const text = encode(msg);
-      const sockets = target === ALL ? this.ctx.getWebSockets() : this.ctx.getWebSockets(target);
+      const sockets = target === ALL ? this.players() : this.ctx.getWebSockets(target);
       for (const ws of sockets) {
         try {
           ws.send(text);
@@ -168,5 +181,19 @@ export class RoomObject extends DurableObject<Env> {
       }
     }
     for (const id of out.close) for (const ws of this.ctx.getWebSockets(id)) ws.close(1008, "closed by room");
+  }
+
+  /** Sockets of players in the room (broadcast targets); everyone when nobody is waiting. */
+  private players(): WebSocket[] {
+    const all = this.ctx.getWebSockets();
+    if (this.room.waiting === 0) return all;
+    return all.filter((ws) => {
+      let id = this.ids.get(ws);
+      if (id === undefined) {
+        id = (ws.deserializeAttachment() as Attachment | null)?.id ?? "";
+        this.ids.set(ws, id);
+      }
+      return this.room.inRoom(id);
+    });
   }
 }

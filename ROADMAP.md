@@ -98,6 +98,7 @@
 ## Phase D · Hardening and the write-up
 
 46. [x] Per-IP caps alongside per-connection caps; connection cap per room; drop and count bad messages
+46a. [x] The line: past 10,000 players, newcomers wait in a FIFO line ("You're #N in line") instead of being refused, get in as players leave, keep their place across hibernation, and get no broadcasts while waiting (added 20 Nov 2026)
 47. [x] Abuse tests: oversized batches, floods, malformed JSON, many connections from one IP, replayed messages, a forged country
 48. [~] Deploy the room to the chosen platform (adapter in `server/adapters/`), client to a static host; deploy from CI on push to `main` (adapter, wrangler config and CI deploy job are ready and verified with `wrangler dev`; the first deploy needs your Cloudflare account)
 49. [~] Load test against the deployed room with k6: connections held, broadcast latency, where it breaks, what it costs; results in `load/` and the README (local Node room: 6,000 players at 34 ms p95, cap at 10,000; the deployed run needs the deploy)

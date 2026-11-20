@@ -17,6 +17,7 @@ export const ptBR: Record<MessageKey, string> = {
   "conn.connecting": "conectando…",
   "conn.waiting": "reconectando…",
   "conn.full": "O buraco está lotado agora. Tenta de novo em um minuto.",
+  "conn.line": "O buraco está lotado. Você é o nº {n} na fila: ganha uma colher assim que alguém sair.",
   "conn.tooMany": "Abas demais da sua rede.",
   "conn.version": "Tem versão nova. Recarrega a página.",
 

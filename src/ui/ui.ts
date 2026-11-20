@@ -522,7 +522,11 @@ export class Ui {
   private connTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** Connection status. "connecting" only shows after 2 s, so a normal load never flashes it. */
-  setConnection(status: "connecting" | "open" | "waiting" | "error", errorKey?: MessageKey): void {
+  setConnection(
+    status: "connecting" | "open" | "waiting" | "error",
+    errorKey?: MessageKey,
+    params?: Params,
+  ): void {
     if (this.connTimer !== null) clearTimeout(this.connTimer);
     this.connTimer = null;
     if (status === "open") {
@@ -530,7 +534,7 @@ export class Ui {
       return;
     }
     const text = errorKey
-      ? this.t(errorKey)
+      ? this.t(errorKey, params)
       : this.t(status === "connecting" ? "conn.connecting" : "conn.waiting");
     const show = () => {
       this.conn.hidden = false;

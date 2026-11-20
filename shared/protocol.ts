@@ -127,6 +127,8 @@ export type ServerMessage =
   | { t: "activity"; frames: ActivityFrame[] }
   | { t: "fame"; fame: FameEntry[] }
   | { t: "seasonEnd"; entry: FameEntry; next: SeasonInfo }
+  /** The room is full: you are waiting at this 1-based place. A `welcome` follows when you get in. */
+  | { t: "line"; position: number }
   | { t: "error"; code: "version" | "full" | "tooManyFromIp" | "strikes" };
 
 /** Scoops dug over the last days, for "at this week's pace". */
@@ -191,6 +193,7 @@ export function parseServerMessage(raw: unknown): ServerMessage | null {
       "activity",
       "fame",
       "seasonEnd",
+      "line",
       "error",
     ];
     if (typeof data !== "object" || data === null || typeof data.t !== "string" || !known.includes(data.t)) {

@@ -110,14 +110,18 @@ function initialSnapshot() {
   return s;
 }
 
-const room = new Room(initialSnapshot(), Date.now());
+/** Dev only: a smaller room, to try the line locally (ROOM_MAX_PLAYERS=2). */
+const MAX_PLAYERS = Number(process.env.ROOM_MAX_PLAYERS ?? 0);
+
+const room = new Room(initialSnapshot(), Date.now(), MAX_PLAYERS > 0 ? { maxPlayers: MAX_PLAYERS } : {});
 const sockets = new Map<string, WebSocket>();
 
 function deliver(out: Output): void {
   for (const [target, msg] of out.send) {
     const text = encode(msg);
     if (target === ALL) {
-      for (const ws of sockets.values()) if (ws.readyState === ws.OPEN) ws.send(text);
+      // Players only: the line gets its own messages.
+      for (const [id, ws] of sockets) if (room.inRoom(id) && ws.readyState === ws.OPEN) ws.send(text);
     } else {
       const ws = sockets.get(target);
       if (ws && ws.readyState === ws.OPEN) ws.send(text);
@@ -129,7 +133,15 @@ function deliver(out: Output): void {
 const http = createServer((req, res) => {
   if (req.url === "/health") {
     res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ ok: true, players: room.players, total: room.totalScoops, ...room.counters }));
+    res.end(
+      JSON.stringify({
+        ok: true,
+        players: room.players,
+        waiting: room.waiting,
+        total: room.totalScoops,
+        ...room.counters,
+      }),
+    );
     return;
   }
   res.writeHead(404).end();

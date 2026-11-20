@@ -15,6 +15,7 @@ export const en = {
   "conn.connecting": "connecting…",
   "conn.waiting": "reconnecting…",
   "conn.full": "The hole is full right now. Try again in a minute.",
+  "conn.line": "The hole is full. You're #{n} in line: you get a spoon as soon as someone leaves.",
   "conn.tooMany": "Too many tabs from your network.",
   "conn.version": "There's a new version. Reload the page.",
 

@@ -32,6 +32,7 @@ Everything below is built. There is no "first version" and "later": the game lau
 ## Architecture
 - **Client:** renders the hole, counts local clicks, sends a batch every 250 to 500 ms, applies its own clicks at once and reconciles with the server's number.
 - **Server:** one authoritative room holding the depth. It accepts batches, caps each connection (for example 15 scoops a second), adds them up and broadcasts the depth 5 to 10 times a second.
+- **The line:** the room holds 10,000 players. Past that, newcomers wait in a first-come line instead of being turned away: "The hole is full. You're #312 in line: you get a spoon as soon as someone leaves." When a player leaves, the first in line gets in. The line has no length limit in the design (a 50,000 safety cap guards the server against socket floods), gets no broadcasts, only its place, so it costs almost nothing to hold. Decided 20 Nov 2026.
 - **Persistence:** snapshot the depth every few seconds, so a restart loses seconds, not the hole.
 - **Options for the backend:** a WebSocket room on a serverless platform that supports them (Cloudflare Durable Objects, PartyKit), or a small Node process with `ws` on a cheap VM. Check current free-tier limits before choosing; I have not.
 - **No chat, no names.** Nothing to moderate.
@@ -46,7 +47,7 @@ Everything below is built. There is no "first version" and "later": the game lau
 |---|---|
 | Nobody online, so it looks dead | Depth persists between visits; replay recent activity; show totals, not only "now" |
 | Click bots | Server-side caps per connection and per IP; the number is a joke, not a prize |
-| Hosting cost if it spreads | Cap connections per room; the broadcast is one small number |
+| Hosting cost if it spreads | Cap players per room (the rest wait in line, getting no broadcasts); the broadcast is one small number |
 | Close to existing shared clickers | The planet-scale target, the layers, and the engineering write-up are the difference |
 
 **Effort (estimate):** 2 to 4 weekends for everything, including seasons, the world view and the load-test write-up.

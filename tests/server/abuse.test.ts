@@ -93,7 +93,7 @@ describe("abuse", () => {
 
 describe("abuse: silent sockets", () => {
   it("closes sockets that never say hello, freeing the slot", () => {
-    const room = new Room(null, 0, { maxConnections: 2 });
+    const room = new Room(null, 0, { maxPlayers: 2 });
     room.connect("silent", { ip: "1", country: "BR" }, 0);
     room.connect("ok", { ip: "2", country: "BR" }, 0);
     room.message("ok", hello, 0);

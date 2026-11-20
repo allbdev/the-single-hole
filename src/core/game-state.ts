@@ -26,6 +26,8 @@ export interface WorldState {
   fame: FameEntry[];
   /** Server clock minus local clock (ms). */
   clockOffset: number;
+  /** Your 1-based place in the line while the room is full; null once you are in. */
+  line: number | null;
 }
 
 /** Things the UI reacts to (cards, sounds), derived while applying a message. */
@@ -35,6 +37,7 @@ export type WorldEvent =
   | { kind: "layer"; layer: number }
   | { kind: "seasonEnd"; entry: FameEntry }
   | { kind: "feed"; item: FeedItem }
+  | { kind: "line"; position: number }
   | { kind: "error"; code: string };
 
 export function initialWorld(now: number): WorldState {
@@ -51,6 +54,7 @@ export function initialWorld(now: number): WorldState {
     week: { scoops: 0, spanMs: 0 },
     fame: [],
     clockOffset: 0,
+    line: null,
   };
 }
 
@@ -81,6 +85,7 @@ export function applyServerMessage(
         week: msg.week,
         fame: msg.fame,
         clockOffset: msg.now - localNow,
+        line: null,
       };
       break;
     case "state":
@@ -126,6 +131,10 @@ export function applyServerMessage(
       events.push({ kind: "seasonEnd", entry: msg.entry });
       break;
     case "activity":
+      break;
+    case "line":
+      s = { ...s, line: msg.position };
+      events.push({ kind: "line", position: msg.position });
       break;
     case "error":
       events.push({ kind: "error", code: msg.code });

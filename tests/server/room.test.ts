@@ -48,14 +48,17 @@ describe("Room: joining", () => {
     expect(out.close).toEqual(["a"]);
   });
 
-  it("caps connections per IP and per room", () => {
-    const room = new Room(null, 0, { maxConnections: 12 });
+  it("caps connections per IP, and refuses only once the line is full too", () => {
+    const room = new Room(null, 0, { maxPlayers: 12, maxWaiting: 1 });
     for (let i = 0; i < LIMITS.connectionsPerIp; i++) room.connect(`c${i}`, { ip: "same", country: "BR" }, 0);
     const tooMany = room.connect("extra", { ip: "same", country: "BR" }, 0);
     expect(msgs(tooMany)).toEqual([{ t: "error", code: "tooManyFromIp" }]);
     room.connect("x1", { ip: "other1", country: "BR" }, 0);
     room.connect("x2", { ip: "other2", country: "BR" }, 0);
-    const full = room.connect("x3", { ip: "other3", country: "BR" }, 0);
+    const waits = room.connect("x3", { ip: "other3", country: "BR" }, 0);
+    expect(waits).toEqual({ send: [], close: [], admitted: [] });
+    expect(room.waiting).toBe(1);
+    const full = room.connect("x4", { ip: "other4", country: "BR" }, 0);
     expect(msgs(full)).toEqual([{ t: "error", code: "full" }]);
     expect(room.counters.rejectedConnections).toBe(2);
   });

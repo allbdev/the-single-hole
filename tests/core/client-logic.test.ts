@@ -98,6 +98,30 @@ describe("game state", () => {
     expect(applyServerMessage(s, { t: "activity", frames: [] }, 0).state).toBe(s);
   });
 
+  it("tracks your place in the line until the welcome lets you in", () => {
+    const s0 = initialWorld(0);
+    const queued = applyServerMessage(s0, { t: "line", position: 312 }, 0);
+    expect(queued.state.line).toBe(312);
+    expect(queued.events).toEqual([{ kind: "line", position: 312 }]);
+    const moved = applyServerMessage(queued.state, { t: "line", position: 1 }, 0).state;
+    expect(moved.line).toBe(1);
+    const welcome: ServerMessage = {
+      t: "welcome",
+      v: 1,
+      you: "me",
+      now: 0,
+      season: s0.season,
+      total: 10,
+      players: 10_000,
+      rim: [],
+      countries: [],
+      feed: [],
+      week: { scoops: 0, spanMs: 60_000 },
+      fame: [],
+    };
+    expect(applyServerMessage(moved, welcome, 0).state.line).toBeNull();
+  });
+
   it("measures how long a layer took", () => {
     const season = { number: 1, startedAt: 0, layerEnteredAt: [0, 600, null, null, null, null, null, null] };
     expect(layerDuration(season, 1)).toBe(600);

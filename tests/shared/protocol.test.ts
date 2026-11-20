@@ -66,6 +66,7 @@ describe("parseServerMessage", () => {
   it("keeps known messages and drops the rest", () => {
     expect(parseServerMessage('{"t":"ack","seq":1,"accepted":2}')).toEqual({ t: "ack", seq: 1, accepted: 2 });
     expect(parseServerMessage('{"t":"wat"}')).toBeNull();
+    expect(parseServerMessage('{"t":"line","position":3}')).toEqual({ t: "line", position: 3 });
     expect(parseServerMessage("garbage")).toBeNull();
     expect(parseServerMessage(5)).toBeNull();
     expect(parseServerMessage("null")).toBeNull();

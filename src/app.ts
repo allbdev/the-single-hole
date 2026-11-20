@@ -8,7 +8,7 @@ import { roomUrl } from "./config";
 import { awayMeters } from "./core/away";
 import { Batcher } from "./core/batcher";
 import { Connection, type ConnectionStatus, type SocketLike } from "./core/connection";
-import { etaYear, formatClock, formatSince, holeHour } from "./core/format";
+import { etaYear, formatClock, formatCount, formatSince, holeHour } from "./core/format";
 import {
   applyServerMessage,
   initialWorld,
@@ -272,6 +272,11 @@ export class App {
       return;
     }
     if (this.view !== "hole" || this.arrivalShowing) return;
+    if (this.world.line !== null) {
+      // Waiting in line: no spoon yet, so nothing to count. Say so again.
+      this.showLine(this.world.line);
+      return;
+    }
     const counted = this.batcher.dig(performance.now());
     if (this.world.you) this.hole.digYou(this.world.you);
     this.sound.scoop();
@@ -283,7 +288,8 @@ export class App {
   private onStatus(s: ConnectionStatus): void {
     if (s === "waiting") {
       this.batcher.disconnected();
-      this.world = { ...this.world, connected: false };
+      // A reconnect goes to the back of the line if the room is still full.
+      this.world = { ...this.world, connected: false, line: null };
     }
     this.ui.setConnection(s);
     this.ui.setPlayers(this.world.players, s === "open");
@@ -340,10 +346,17 @@ export class App {
         break;
       case "feed":
         break;
+      case "line":
+        this.showLine(ev.position);
+        break;
       case "error":
         this.ui.setConnection("error", ERROR_KEYS[ev.code] ?? "conn.waiting");
         break;
     }
+  }
+
+  private showLine(position: number): void {
+    this.ui.setConnection("error", "conn.line", { n: formatCount(position, this.locale) });
   }
 
   private onFirstWelcome(): void {

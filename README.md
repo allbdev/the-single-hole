@@ -43,7 +43,7 @@ Player-facing text is English by default, with a PT-BR toggle in the corner. Cod
 
 **Optimistic, then reconciled.** The client applies your scoops at once and sends them in batches (`src/core/batcher.ts`). It mirrors the server's token bucket, so it never sends more than will be accepted. The display (`src/core/reconcile.ts`) eases toward the server's total plus your unconfirmed scoops and never goes backwards, even if the server drops some. Batches in flight when the connection drops are discarded rather than risk counting twice; scoops dug offline wait and go out after reconnecting, at the server's pace.
 
-**Rate limits and abuse.** Every message is parsed and validated before the room sees it (`shared/protocol.ts`); bad ones are strikes, and too many strikes close the socket. Scoops are capped per connection (15/s) and per IP (45/s, shared across tabs), connections per IP (10) and per room (10,000). The country comes from the platform's request headers, never from the client. The number is a joke, not a prize: cheating is pointless, not impossible. `tests/server/abuse.test.ts` covers click bots, replays, floods, malformed and oversized input, and spoofing.
+**Rate limits and abuse.** Every message is parsed and validated before the room sees it (`shared/protocol.ts`); bad ones are strikes, and too many strikes close the socket. Scoops are capped per connection (15/s) and per IP (45/s, shared across tabs), connections per IP (10) and players per room (10,000). Past that, newcomers wait in a first-come line that gets only its place, never the room's broadcasts, so it costs almost nothing to hold; a leaver's slot goes to the front of the line. The country comes from the platform's request headers, never from the client. The number is a joke, not a prize: cheating is pointless, not impossible. `tests/server/abuse.test.ts` covers click bots, replays, floods, malformed and oversized input, and spoofing.
 
 **Persistence.** The room snapshots its state every few seconds (and on shutdown) with a backup copy. If both copies are unreadable, it refuses to start rather than silently reset a live hole to zero.
 
@@ -55,7 +55,7 @@ Player-facing text is English by default, with a PT-BR toggle in the corner. Cod
 
 ## Load test
 
-One room on the Node adapter (M3 Max laptop, load generator on the same machine) held **6,000 players digging at 34 ms p95** broadcast latency with no errors, and reached its **10,000-connection cap at 55 ms p95** using ~85 % of one CPU core. Past the cap, new players are told the room is full. Method, numbers and the Cloudflare cost math: [`load/README.md`](load/README.md).
+One room on the Node adapter (M3 Max laptop, load generator on the same machine) held **6,000 players digging at 34 ms p95** broadcast latency with no errors, and reached its **10,000-connection cap at 55 ms p95** using ~85 % of one CPU core. Past the cap, new players now wait in line and get in as others leave. Method, numbers and the Cloudflare cost math: [`load/README.md`](load/README.md).
 
 ## Requirements
 
