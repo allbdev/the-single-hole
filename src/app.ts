@@ -235,7 +235,7 @@ export class App {
       this.ui.setGlobeLoading(true);
       this.globeLoading = import("./view/globe-scene").then(({ GlobeScene }) => {
         this.globe = new GlobeScene(this.quality);
-        this.globe.setCountries(this.world.countries);
+        this.globe.setCountries(this.world.countries, this.world.place);
         this.ui.setGlobeLoading(false);
       });
     }
@@ -304,7 +304,7 @@ export class App {
     for (const ev of events) this.onEvent(ev);
     if (msg.t === "rim" || msg.t === "welcome") this.syncRim();
     if (msg.t === "world" || msg.t === "welcome" || msg.t === "seasonEnd") {
-      this.globe?.setCountries(state.countries);
+      this.globe?.setCountries(state.countries, state.place);
       this.refreshPanels();
     }
     if (msg.t === "layer" || msg.t === "welcome") this.refreshPanels();

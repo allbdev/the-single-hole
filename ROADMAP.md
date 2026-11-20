@@ -62,7 +62,7 @@
 22. [x] Your own scoop count and unlocked spoons in `localStorage` (survives reloads, tolerates a corrupt value); spoon picker
 23. [x] Reconnect with backoff; scoops dug while offline are sent once on reconnect (capped)
 24. [x] Persistence: snapshot every few seconds and on shutdown, restore on start, refuse to silently reset to zero
-25. [x] Countries: country code from the platform's request headers, per-country scoop totals and player counts in the room; never cities, never stored with an IP
+25. [x] Countries: country code from the platform's request headers, per-country scoop totals and player counts in the room; never cities, never stored with an IP. Globe dots by state/region (20 Nov 2026): `cf.regionCode`, regions with ≥ 3 players online, your own region sent only to you, never stored; region points from Natural Earth admin-1 (`tools/gen-region-centroids.ts`)
 26. [x] Feed events from the server (a country joined with a spoon, "+1.000 m em 4 min", a country's 300 in a row, "Alguém achou um osso"), rendered from templates in both languages
 27. [x] Activity log of the last minute (aggregated per tick, no identities) for the replay
 28. [x] Layer timing: when the world entered each layer and how long it took
@@ -125,4 +125,4 @@
 
 - Accounts, names, chat, anything players type: nothing to moderate.
 - Ads, payments, personal data storage.
-- Cities or any location finer than a country.
+- Cities or any location finer than a state, and states shown as text.

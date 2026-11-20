@@ -23,7 +23,7 @@ Everything below is built. There is no "first version" and "later": the game lau
 - Click to dig, batched to the server a few times a second.
 - Layer milestones: the eight layers on the canvas (below).
 - Share card, and a link to the Steam page.
-- Per-country totals and the world view (globe). **Countries only**: no cities anywhere.
+- Per-country totals and the world view (globe). **Countries on screen, states only for the dots, no cities anywhere.** Every label, tag, total and feed line names a country. The platform also reports the state or region (ISO 3166-2 first level, e.g. Espírito Santo); it is used only to place dots on the globe, never shown as text and never stored. A region's dot appears only when at least 3 players are online there (fewer count at the country's point), except your own dot, which the server tells only you. Decided 20 Nov 2026: a dot for Brazil in the middle of Mato Grosso didn't look like where anyone plays from.
 - Spoons: eight, unlocked by your own scoop count (below).
 - "Seasons": when the world reaches Japan, the hole is archived in a hall of fame ("mural") and a new one starts.
 - Replay of the last minute of activity, so the room never looks empty, and "while you were away".

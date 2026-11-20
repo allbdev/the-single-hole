@@ -35,7 +35,7 @@ Numbers quoted here come from `load/README.md`; update them after the deployed l
 
 > **Show HN: Everyone digs the same hole, live, with a spoon**
 >
-> A tiny multiplayer browser game: one shared counter (the depth of a hole from Brazil to Japan), live, with three.js visuals. The interesting part is the counter: optimistic client updates reconciled against one authoritative room, token-bucket rate limits mirrored on the client, hibernating WebSockets on a Durable Object, and a load test with numbers. Write-up in the README. No accounts, no tracking, countries only.
+> A tiny multiplayer browser game: one shared counter (the depth of a hole from Brazil to Japan), live, with three.js visuals. The interesting part is the counter: optimistic client updates reconciled against one authoritative room, token-bucket rate limits mirrored on the client, hibernating WebSockets on a Durable Object, and a load test with numbers. Write-up in the README. No accounts, no tracking, never cities.
 >
 > [YOUR-DOMAIN] · https://github.com/allbdev/the-single-hole
 

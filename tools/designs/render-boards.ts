@@ -5,6 +5,7 @@
  *   <out>/designs/*.jpg   the /designs exports, one per board
  *
  *   npx tsx tools/designs/render-boards.ts --out=/tmp/boards
+ *   ... --timeout=120000   (ms per step; raise it on a busy machine, software rendering is slow)
  */
 import { spawn, type ChildProcess } from "node:child_process";
 import { mkdirSync, rmSync, readFileSync } from "node:fs";
@@ -22,6 +23,7 @@ const args = Object.fromEntries(
   }),
 );
 const OUT = resolve(args.out ?? join(tmpdir(), "um-buraco-so-boards"));
+const STEP_TIMEOUT_MS = Number(args.timeout ?? 30_000);
 const ROOT = resolve(import.meta.dirname, "../..");
 const ROOM_PORT = 8797;
 const WEB_PORT = 5199;
@@ -78,6 +80,7 @@ async function main(): Promise<void> {
       viewport: { width: opts.w ?? 1280, height: opts.h ?? 720 },
       deviceScaleFactor: 2,
     });
+    page.setDefaultTimeout(STEP_TIMEOUT_MS);
     await page.goto(`${BASE}/${query}`);
     await page.waitForFunction(() => (window as unknown as { __game?: { world: { connected: boolean } } }).__game?.world.connected);
     await page.waitForTimeout(2500);
@@ -168,6 +171,7 @@ async function main(): Promise<void> {
   // Open Graph preview (public/og.jpg): the landing at 1200 × 630.
   {
     const page = await browser.newPage({ viewport: { width: 1200, height: 630 }, deviceScaleFactor: 1 });
+    page.setDefaultTimeout(STEP_TIMEOUT_MS);
     await page.goto(`${BASE}/?lang=pt-BR`);
     await page.waitForTimeout(4500);
     await page.screenshot({ path: join(OUT, "og.jpg"), type: "jpeg", quality: 86 });
@@ -178,6 +182,7 @@ async function main(): Promise<void> {
   console.info("lineups:");
   const lineup = async (name: string, what: string) => {
     const page = await browser.newPage({ viewport: { width: 1664, height: what === "spoons" ? 700 : 760 }, deviceScaleFactor: 1 });
+    page.setDefaultTimeout(STEP_TIMEOUT_MS);
     await page.goto(`${BASE}/tools/designs/lineup.html?what=${what}`);
     await page.waitForFunction(() => (window as unknown as { __ready?: boolean }).__ready);
     const path = join(OUT, "screens", `${name}.png`);
@@ -200,6 +205,7 @@ async function main(): Promise<void> {
     .mono { font-family: Plex, monospace; font-weight: 600; }`;
   const exportPage = async (name: string, w: number, h: number, html: string) => {
     const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: 1.6 });
+    page.setDefaultTimeout(STEP_TIMEOUT_MS);
     await page.setContent(`<!doctype html><html><head><style>${fontCss}</style></head><body>${html}</body></html>`);
     await page.waitForTimeout(800);
     await page.screenshot({ path: join(OUT, "designs", `${name}.jpg`), type: "jpeg", quality: 88 });

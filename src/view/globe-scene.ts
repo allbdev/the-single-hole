@@ -27,8 +27,17 @@ import { feature } from "topojson-client";
 import type { Topology, GeometryCollection } from "topojson-specification";
 import landTopo from "world-atlas/land-110m.json";
 import type { CountryStat } from "../../shared/protocol";
+import { globeDots, type GlobeDot } from "../core/globe-dots";
 import type { Quality } from "../core/quality";
-import { HOLE_LAT_LON, countryLatLon, dotRadius, latLonToVector, project, unwrapRing } from "./geo";
+import {
+  HOLE_LAT_LON,
+  countryLatLon,
+  regionLatLon,
+  dotRadius,
+  latLonToVector,
+  project,
+  unwrapRing,
+} from "./geo";
 import { ValueNoise, hexToRgb, lerpRgb, mulberry32 } from "./noise";
 import type { View } from "./stage";
 import { makeCanvas } from "./textures";
@@ -127,7 +136,7 @@ export class GlobeScene implements View {
   private readonly earth = new Group();
   private readonly dots: InstancedMesh;
   private readonly dummy = new Object3D();
-  private stats: CountryStat[] = [];
+  private placed: GlobeDot[] = [];
   private spin = 0;
   private drag: { x: number; y: number; spin: number; tilt: number } | null = null;
   private tilt = 0.25;
@@ -208,16 +217,16 @@ export class GlobeScene implements View {
     this.layout(16 / 9);
   }
 
-  setCountries(stats: CountryStat[]): void {
-    this.stats = stats.filter((s) => s.players > 0 && countryLatLon(s.code)).slice(0, MAX_DOTS);
-    this.stats.forEach((s, i) => {
-      const [lat, lon] = countryLatLon(s.code)!;
-      this.dummy.position.set(...latLonToVector(lat, lon, 1.004));
-      this.dummy.scale.setScalar(dotRadius(s.players));
+  /** One dot per region with enough players, one per country for the rest; yours in your region. */
+  setCountries(stats: CountryStat[], you: { country: string; region: string } | null = null): void {
+    this.placed = globeDots(stats, { country: countryLatLon, region: regionLatLon }, you, MAX_DOTS);
+    this.placed.forEach((d, i) => {
+      this.dummy.position.set(...latLonToVector(d.lat, d.lon, 1.004));
+      this.dummy.scale.setScalar(dotRadius(d.players));
       this.dummy.updateMatrix();
       this.dots.setMatrixAt(i, this.dummy.matrix);
     });
-    this.dots.count = this.stats.length;
+    this.dots.count = this.placed.length;
     this.dots.instanceMatrix.needsUpdate = true;
   }
 

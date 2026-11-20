@@ -3,6 +3,7 @@
  * spoon, and digs now and then. Needs the room started with ROOM_DEV_QUERY_COUNTRY=1.
  *
  *   npx tsx tools/bots.ts --count=12 --url=ws://localhost:8787/ws
+ *   npx tsx tools/bots.ts --countries=BR-SP,BR-SP,BR-SP,JP-13   (country, or country-region)
  */
 import WebSocket from "ws";
 import { SPOON_IDS } from "../shared/data/spoons";
@@ -17,11 +18,13 @@ const args = Object.fromEntries(
 const COUNT = Number(args.count ?? 10);
 const URL_BASE = args.url ?? "ws://localhost:8787/ws";
 const RATE = Number(args.rate ?? 3); // scoops a second per bot, roughly
-const COUNTRIES = (args.countries ?? "BR,BR,BR,PT,JP,AR,US,CL,MX,BR,JP,PT,FR,DE,CO,BR").split(",");
+const COUNTRIES = (
+  args.countries ?? "BR-SP,BR-SP,BR-SP,PT,JP-13,AR,US-CA,CL,MX,BR-RJ,JP-13,PT,FR,DE,CO,BR-SP"
+).split(",");
 
 for (let i = 0; i < COUNT; i++) {
-  const country = COUNTRIES[i % COUNTRIES.length]!;
-  const ws = new WebSocket(`${URL_BASE}?country=${country}`, {
+  const [country, region = ""] = COUNTRIES[i % COUNTRIES.length]!.split("-");
+  const ws = new WebSocket(`${URL_BASE}?country=${country}&region=${region}`, {
     headers: { "x-forwarded-for": `10.0.0.${i}` },
   });
   let seq = 0;

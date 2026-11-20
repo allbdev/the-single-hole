@@ -7,7 +7,7 @@ import { mkdirSync, readFileSync, renameSync, writeFileSync, existsSync } from "
 import { createServer, type IncomingMessage } from "node:http";
 import { dirname } from "node:path";
 import { WebSocketServer, type WebSocket } from "ws";
-import { encode, normalizeCountry } from "../../shared/protocol";
+import { encode, normalizeCountry, normalizeRegion } from "../../shared/protocol";
 import { ALL, Room, type Output } from "../room";
 import { chooseSnapshot, emptySnapshot } from "../snapshot";
 import { ARRIVAL_SCOOPS } from "../../shared/data/layers";
@@ -20,7 +20,10 @@ const SNAPSHOT_EVERY_MS = 5_000;
 const TRUST_PROXY = process.env.TRUST_PROXY === "1";
 /** Lets local testing pretend to be another country: ROOM_FAKE_COUNTRY=JP. */
 const FAKE_COUNTRY = process.env.ROOM_FAKE_COUNTRY;
-/** Dev only: read the country from `?country=JP` on the socket URL (for bots and board renders). */
+/** Lets local testing pretend to be in a region of that country: ROOM_FAKE_REGION=SP. */
+const FAKE_REGION = process.env.ROOM_FAKE_REGION;
+/** Dev only: read the country from `?country=JP` (and `&region=13`) on the socket URL (for bots and
+ * board renders). */
 const DEV_QUERY_COUNTRY = process.env.ROOM_DEV_QUERY_COUNTRY === "1";
 /** Dev only: start a fresh room at this many scoops (ignored when a snapshot exists). */
 const START_SCOOPS = Number(process.env.ROOM_START_SCOOPS ?? 0);
@@ -81,6 +84,18 @@ function country(req: IncomingMessage): string {
   return normalizeCountry(Array.isArray(h) ? h[0] : h);
 }
 
+function region(req: IncomingMessage): string {
+  if (DEV_QUERY_COUNTRY) {
+    const q = new URL(req.url ?? "/", "http://x").searchParams;
+    if (q.get("country")) return normalizeRegion(q.get("region"));
+  }
+  if (FAKE_COUNTRY) return normalizeRegion(FAKE_REGION);
+  if (!TRUST_PROXY) return "";
+  // Cloudflare's "visitor location headers" managed transform.
+  const h = req.headers["cf-region-code"];
+  return normalizeRegion(Array.isArray(h) ? h[0] : h);
+}
+
 function initialSnapshot() {
   const loaded = loadSnapshot();
   if (loaded || !START_SCOOPS) return loaded;
@@ -128,7 +143,7 @@ http.on("upgrade", (req, socket, head) => {
 wss.on("connection", (ws, req) => {
   const id = randomUUID().slice(0, 8);
   sockets.set(id, ws);
-  deliver(room.connect(id, { ip: clientIp(req), country: country(req) }, Date.now()));
+  deliver(room.connect(id, { ip: clientIp(req), country: country(req), region: region(req) }, Date.now()));
   ws.on("message", (data, isBinary) => {
     if (isBinary) return deliver(room.message(id, null, Date.now()));
     deliver(room.message(id, data.toString(), Date.now()));

@@ -1,12 +1,20 @@
 import centroids from "./country-centroids.json";
+import regions from "./region-centroids.json";
 
 /** The hole: inland São Paulo state ("O BURACO · INTERIOR DE SP"). */
 export const HOLE_LAT_LON: [number, number] = [-22.3, -48.6];
 
-/** Country centroid [lat, lon] or null. Countries only. */
+/** Country centroid [lat, lon] or null. */
 export function countryLatLon(code: string): [number, number] | null {
   const c = (centroids as unknown as Record<string, [number, number]>)[code];
   return c ?? null;
+}
+
+/** A state or region's point ("BR", "ES" → Espírito Santo), or null when we don't have it. */
+export function regionLatLon(country: string, region: string): [number, number] | null {
+  if (!region) return null;
+  const r = (regions as unknown as Record<string, [number, number]>)[`${country}-${region}`];
+  return r ?? null;
 }
 
 /** Unit-sphere position for a lat/lon, with lon 0 facing +Z and north up (+Y). */

@@ -14,6 +14,8 @@ import type {
 export interface WorldState {
   connected: boolean;
   you: string | null;
+  /** Your own country and region, when the server knows the region. */
+  place: { country: string; region: string } | null;
   total: number;
   players: number;
   season: SeasonInfo;
@@ -39,6 +41,7 @@ export function initialWorld(now: number): WorldState {
   return {
     connected: false,
     you: null,
+    place: null,
     total: 0,
     players: 0,
     season: { number: 0, startedAt: now, layerEnteredAt: LAYERS.map(() => null) },
@@ -68,6 +71,7 @@ export function applyServerMessage(
         ...s,
         connected: true,
         you: msg.you,
+        place: msg.place ?? null,
         total: msg.total,
         players: msg.players,
         season: msg.season,

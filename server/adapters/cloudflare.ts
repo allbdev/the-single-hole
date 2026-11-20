@@ -4,7 +4,7 @@
  * sockets stay open. Rules live in `server/room.ts`, never here.
  */
 import { DurableObject } from "cloudflare:workers";
-import { encode, normalizeCountry } from "../../shared/protocol";
+import { encode, normalizeCountry, normalizeRegion } from "../../shared/protocol";
 import { ALL, Room, type ConnectionInfo, type Output } from "../room";
 import { chooseSnapshot } from "../snapshot";
 
@@ -88,18 +88,22 @@ export class RoomObject extends DurableObject<Env> {
     const pair = new WebSocketPair();
     const [client, server] = [pair[0], pair[1]];
     const id = crypto.randomUUID().slice(0, 8);
-    const cf = (request as Request & { cf?: { country?: string } }).cf;
+    const cf = (request as Request & { cf?: { country?: string; regionCode?: string } }).cf;
     const info: Attachment = {
       id,
       ip: request.headers.get("CF-Connecting-IP") ?? "unknown",
       country: normalizeCountry(cf?.country),
+      // The state or region, only to place the dot on the globe; held in memory, never stored.
+      region: normalizeRegion(cf?.regionCode),
       spoon: "teaspoon",
       claimed: 0,
       hello: false,
     };
     this.ctx.acceptWebSocket(server, [id]);
     server.serializeAttachment(info);
-    this.deliver(this.room.connect(id, { ip: info.ip, country: info.country }, Date.now()));
+    this.deliver(
+      this.room.connect(id, { ip: info.ip, country: info.country, region: info.region }, Date.now()),
+    );
     this.schedule();
     return new Response(null, { status: 101, webSocket: client });
   }

@@ -49,7 +49,7 @@ Player-facing text is English by default, with a PT-BR toggle in the corner. Cod
 
 **Cheap when idle.** On Cloudflare the room uses the WebSocket Hibernation API: sockets stay open while the object sleeps, connection info lives in socket attachments, and the room only ticks while something changed. Clients only send while someone digs.
 
-**Privacy.** No accounts, names, chat or cookies. IPs are used in memory for rate limits and never stored. Locations are countries only. Your own scoop count, spoon and language live in your browser's `localStorage`.
+**Privacy.** No accounts, names, chat or cookies. IPs are used in memory for rate limits and never stored. Everything on screen names a country. The state or region (from the same platform headers) only moves dots on the globe: it's never stored, never shown as text, and only sent for regions with at least 3 players online, except your own, which only you receive. Your own scoop count, spoon and language live in your browser's `localStorage`.
 
 **Rendering.** three.js with procedural textures (no image assets): instanced grass, a radial ground mesh with the hole, steel spoons with a reflection map, a cut block, and a globe drawn from Natural Earth land data. The globe is a lazy-loaded chunk. Phones get fewer grass blades, no shadows and a capped pixel ratio. Initial JS is ~175 KB gzipped (budget 300 KB, checked in CI).
 
@@ -93,7 +93,8 @@ Dev helpers:
 ```sh
 # a busy room: start deep, read the country from the socket URL, then add fake players
 ROOM_START_SCOOPS=9381220 ROOM_DEV_QUERY_COUNTRY=1 TRUST_PROXY=1 npm run dev
-npx tsx tools/bots.ts --count=14
+npx tsx tools/bots.ts --count=14          # --countries=BR-SP,BR-SP,BR-SP,JP-13 for region dots
+# pretend your own tab is in a state: ROOM_FAKE_COUNTRY=BR ROOM_FAKE_REGION=SP npm run dev
 # URL flags: ?lang=pt-BR  ?view=hole|section|world  ?quality=low|medium|high
 ```
 
@@ -138,4 +139,4 @@ designs/       Mockups (reference only, not shipped).
 
 ## License
 
-[MIT](LICENSE). Land shapes on the globe: Natural Earth via `world-atlas` (public domain). Fonts: Archivo and IBM Plex Mono (SIL Open Font License).
+[MIT](LICENSE). Land shapes on the globe: Natural Earth via `world-atlas` (public domain). State and region points: Natural Earth admin-1 (public domain). Fonts: Archivo and IBM Plex Mono (SIL Open Font License).

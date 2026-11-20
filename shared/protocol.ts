@@ -30,6 +30,14 @@ export const LIMITS = {
 export const BATCH_INTERVAL_MS = 400;
 
 export type CountryCode = string; // ISO 3166-1 alpha-2, or "XX" when unknown
+/** First-level subdivision within a country (the part after the dash in ISO 3166-2, "ES" for
+ * Espírito Santo), or "" when unknown. Only used to place dots on the globe: never shown as
+ * text, never stored. */
+export type RegionCode = string;
+
+/** A region's online count is only sent when at least this many players are there, so a lone
+ * player can't be picked out; smaller groups count at the country's point. */
+export const MIN_REGION_PLAYERS = 3;
 
 export interface SeasonInfo {
   number: number;
@@ -53,6 +61,8 @@ export interface CountryStat {
   players: number;
   /** Scoops this season. */
   scoops: number;
+  /** Players online now by region, only regions with at least MIN_REGION_PLAYERS. */
+  regions?: { code: RegionCode; players: number }[];
 }
 
 export interface FameEntry {
@@ -96,6 +106,8 @@ export type ServerMessage =
       t: "welcome";
       v: number;
       you: string;
+      /** Your own country and region (sent only to you), so your dot sits in your region. */
+      place?: { country: CountryCode; region: RegionCode };
       now: number;
       season: SeasonInfo;
       total: number;
@@ -188,6 +200,14 @@ export function parseServerMessage(raw: unknown): ServerMessage | null {
   } catch {
     return null;
   }
+}
+
+/** Normalize a region header value (Cloudflare's `regionCode`) to 1 to 3 letters/digits, "" when
+ * unknown. */
+export function normalizeRegion(value: string | null | undefined): RegionCode {
+  if (typeof value !== "string") return "";
+  const v = value.trim().toUpperCase();
+  return /^[A-Z0-9]{1,3}$/.test(v) ? v : "";
 }
 
 /** Normalize a country header value to an alpha-2 code, "XX" when unknown or anonymized. */

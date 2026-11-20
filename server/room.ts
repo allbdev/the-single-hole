@@ -4,10 +4,12 @@ import type { SpoonId } from "../shared/data/spoons";
 import { layerIndexAtScoops, scoopsToMeters } from "../shared/depth";
 import {
   LIMITS,
+  MIN_REGION_PLAYERS,
   PROTOCOL_VERSION,
   parseClientMessage,
   type ActivityFrame,
   type CountryCode,
+  type RegionCode,
   type CountryStat,
   type FameEntry,
   type FeedItem,
@@ -60,6 +62,8 @@ const SURGE_WINDOW_MS = 4 * 60_000;
 const SURGE_EVERY_MS = 5 * 60_000;
 const JOIN_FEED_GAP_MS = 5_000;
 const JOIN_COUNTRY_GAP_MS = 60_000;
+/** Region dots per country in a world message (keeps it small in big countries). */
+const MAX_REGIONS_PER_COUNTRY = 30;
 const FIND_GAP_MS = 30_000;
 const STREAK_FEED_GAP_MS = 20_000;
 
@@ -68,6 +72,7 @@ interface Conn {
   connectedAt: number;
   ip: string;
   country: CountryCode;
+  region: RegionCode;
   spoon: SpoonId;
   claimed: number;
   session: number;
@@ -90,6 +95,8 @@ interface IpState {
 export interface ConnectionInfo {
   ip: string;
   country: CountryCode;
+  /** Missing on connections saved before regions existed. */
+  region?: RegionCode;
   spoon: SpoonId;
   claimed: number;
   hello: boolean;
@@ -211,7 +218,7 @@ export class Room {
 
   // ---------- connections ----------
 
-  connect(id: string, info: { ip: string; country: CountryCode }, now: number): Output {
+  connect(id: string, info: { ip: string; country: CountryCode; region?: RegionCode }, now: number): Output {
     const out = empty();
     if (this.conns.size >= this.opts.maxConnections) {
       this.counters.rejectedConnections++;
@@ -236,6 +243,7 @@ export class Room {
       connectedAt: now,
       ip: info.ip,
       country: info.country,
+      region: info.region ?? "",
       spoon: "teaspoon",
       claimed: 0,
       session: 0,
@@ -255,7 +263,14 @@ export class Room {
   connectionInfo(id: string): ConnectionInfo | null {
     const c = this.conns.get(id);
     if (!c) return null;
-    return { ip: c.ip, country: c.country, spoon: c.spoon, claimed: c.claimed, hello: c.hello };
+    return {
+      ip: c.ip,
+      country: c.country,
+      region: c.region,
+      spoon: c.spoon,
+      claimed: c.claimed,
+      hello: c.hello,
+    };
   }
 
   /**
@@ -264,7 +279,7 @@ export class Room {
    */
   resume(id: string, info: ConnectionInfo, now: number): void {
     if (this.conns.has(id)) return;
-    this.connect(id, { ip: info.ip, country: info.country }, now);
+    this.connect(id, { ip: info.ip, country: info.country, region: info.region }, now);
     const c = this.conns.get(id);
     if (!c) return;
     c.spoon = info.spoon;
@@ -505,6 +520,7 @@ export class Room {
       t: "welcome",
       v: PROTOCOL_VERSION,
       you: c.id,
+      ...(c.region ? { place: { country: c.country, region: c.region } } : {}),
       now,
       season: this.seasonInfo,
       total: this.total,
@@ -527,11 +543,32 @@ export class Room {
 
   countryStats(): CountryStat[] {
     const players = new Map<CountryCode, number>();
-    for (const c of this.conns.values())
-      if (c.hello) players.set(c.country, (players.get(c.country) ?? 0) + 1);
+    const regions = new Map<CountryCode, Map<RegionCode, number>>();
+    for (const c of this.conns.values()) {
+      if (!c.hello) continue;
+      players.set(c.country, (players.get(c.country) ?? 0) + 1);
+      if (!c.region) continue;
+      let r = regions.get(c.country);
+      if (!r) regions.set(c.country, (r = new Map()));
+      r.set(c.region, (r.get(c.region) ?? 0) + 1);
+    }
     const codes = new Set([...players.keys(), ...this.countryScoops.keys()]);
     return [...codes]
-      .map((code) => ({ code, players: players.get(code) ?? 0, scoops: this.countryScoops.get(code) ?? 0 }))
+      .map((code) => {
+        const stat: CountryStat = {
+          code,
+          players: players.get(code) ?? 0,
+          scoops: this.countryScoops.get(code) ?? 0,
+        };
+        // Only regions with enough players to hide in; the rest count at the country's point.
+        const shown = [...(regions.get(code) ?? [])]
+          .filter(([, n]) => n >= MIN_REGION_PLAYERS)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, MAX_REGIONS_PER_COUNTRY)
+          .map(([region, n]) => ({ code: region, players: n }));
+        if (shown.length > 0) stat.regions = shown;
+        return stat;
+      })
       .sort((a, b) => b.scoops - a.scoops || b.players - a.players)
       .slice(0, 60);
   }

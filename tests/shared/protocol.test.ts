@@ -4,6 +4,7 @@ import {
   PROTOCOL_VERSION,
   encode,
   normalizeCountry,
+  normalizeRegion,
   parseClientMessage,
   parseServerMessage,
 } from "../../shared/protocol";
@@ -80,6 +81,20 @@ describe("normalizeCountry", () => {
     expect(normalizeCountry("<script>")).toBe("XX");
     expect(normalizeCountry(undefined)).toBe("XX");
     expect(normalizeCountry(null)).toBe("XX");
+  });
+});
+
+describe("normalizeRegion", () => {
+  it("keeps 1 to 3 letters or digits and drops everything else", () => {
+    expect(normalizeRegion("es")).toBe("ES");
+    expect(normalizeRegion(" 13 ")).toBe("13");
+    expect(normalizeRegion("IDF")).toBe("IDF");
+    expect(normalizeRegion("ABCD")).toBe("");
+    expect(normalizeRegion("BR-ES")).toBe("");
+    expect(normalizeRegion("<b>")).toBe("");
+    expect(normalizeRegion("")).toBe("");
+    expect(normalizeRegion(undefined)).toBe("");
+    expect(normalizeRegion(null)).toBe("");
   });
 });
 

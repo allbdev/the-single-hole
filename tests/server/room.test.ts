@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { ARRIVAL_SCOOPS, LAYERS } from "../../shared/data/layers";
-import { LIMITS, PROTOCOL_VERSION, encode, type ServerMessage } from "../../shared/protocol";
+import {
+  LIMITS,
+  MIN_REGION_PLAYERS,
+  PROTOCOL_VERSION,
+  encode,
+  type ServerMessage,
+} from "../../shared/protocol";
 import { ALL, Room, STREAK_COUNT, type Output } from "../../server/room";
 import { emptySnapshot, validateSnapshot, type Snapshot } from "../../server/snapshot";
 
@@ -11,8 +17,13 @@ function msgs(out: Output, target?: string): ServerMessage[] {
   return out.send.filter(([to]) => target === undefined || to === target).map(([, m]) => m);
 }
 
-function join(room: Room, id: string, now: number, opts: { ip?: string; country?: string } = {}): Output {
-  room.connect(id, { ip: opts.ip ?? `ip-${id}`, country: opts.country ?? "BR" }, now);
+function join(
+  room: Room,
+  id: string,
+  now: number,
+  opts: { ip?: string; country?: string; region?: string } = {},
+): Output {
+  room.connect(id, { ip: opts.ip ?? `ip-${id}`, country: opts.country ?? "BR", region: opts.region }, now);
   return room.message(id, hello(), now);
 }
 
@@ -329,12 +340,54 @@ describe("Room: hibernation", () => {
     join(room, "a", 0, { country: "JP" });
     room.message("a", encode({ t: "spoon", spoon: "bent" }), 0);
     const info = room.connectionInfo("a")!;
-    expect(info).toEqual({ ip: "ip-a", country: "JP", spoon: "bent", claimed: 0, hello: true });
+    expect(info).toEqual({ ip: "ip-a", country: "JP", region: "", spoon: "bent", claimed: 0, hello: true });
     const woke = newRoom();
     woke.resume("a", info, 10);
     expect(woke.players).toBe(1);
     expect(msgs(woke.message("a", dig(0, 2), 10), "a")).toContainEqual({ t: "ack", seq: 0, accepted: 2 });
     expect(woke.rim()[0]).toMatchObject({ spoon: "bent", country: "JP" });
     expect(room.connectionInfo("ghost")).toBeNull();
+  });
+});
+
+describe("Room: regions (globe dots only)", () => {
+  it("reports a region only once it has enough players to hide in", () => {
+    const room = newRoom();
+    for (let i = 0; i < MIN_REGION_PLAYERS - 1; i++) join(room, `es${i}`, 0, { region: "ES" });
+    join(room, "sp0", 0, { region: "SP" });
+    expect(room.countryStats()[0]).toMatchObject({ code: "BR", players: MIN_REGION_PLAYERS });
+    expect(room.countryStats()[0]!.regions).toBeUndefined();
+    join(room, "es-last", 0, { region: "ES" });
+    expect(room.countryStats()[0]!.regions).toEqual([{ code: "ES", players: MIN_REGION_PLAYERS }]);
+  });
+
+  it("tells only you your own region, in your welcome", () => {
+    const room = newRoom();
+    const out = join(room, "a", 0, { region: "ES" });
+    expect(msgs(out, "a")[0]).toMatchObject({ t: "welcome", place: { country: "BR", region: "ES" } });
+    const other = join(room, "b", 0);
+    expect(msgs(other, "b")[0]).not.toHaveProperty("place");
+    // Nobody else's message names a region.
+    expect(JSON.stringify(msgs(other, ALL))).not.toContain('"ES"');
+  });
+
+  it("never stores regions in the snapshot", () => {
+    const room = newRoom();
+    for (let i = 0; i < MIN_REGION_PLAYERS; i++) join(room, `es${i}`, 0, { region: "ES" });
+    room.message("es0", dig(0, 3), 0);
+    expect(JSON.stringify(room.snapshot(0))).not.toContain("ES");
+  });
+
+  it("keeps the region across hibernation, and accepts connections saved without one", () => {
+    const room = newRoom();
+    join(room, "a", 0, { region: "ES" });
+    const info = room.connectionInfo("a")!;
+    expect(info.region).toBe("ES");
+    const woke = newRoom(room.snapshot(0), 10);
+    woke.resume("a", info, 10);
+    expect(woke.connectionInfo("a")!.region).toBe("ES");
+    const { region: _drop, ...old } = info;
+    woke.resume("b", old, 10);
+    expect(woke.connectionInfo("b")!.region).toBe("");
   });
 });
