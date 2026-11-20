@@ -120,6 +120,7 @@ export class App {
     const initial = new URLSearchParams(location.search).get("view");
     if (initial === "hole" || initial === "section" || initial === "world") this.go(initial);
     else this.go("landing");
+    this.prewarmSection();
 
     window.addEventListener("resize", () => this.stage.resize());
     document.addEventListener("keydown", (e) => this.onKey(e));
@@ -198,14 +199,34 @@ export class App {
     this.view = view;
     if (view === "landing") this.hole.setCameraMode("landing");
     if (view === "hole") this.hole.setCameraMode("dig");
-    if (view === "section" && !this.section) {
-      this.section = new SectionScene(this.quality, this.stage.environment());
-      this.section.setDepth(scoopsToMeters(this.reconciler.displayed));
-    }
+    if (view === "section") this.ensureSection();
     if (view === "world") void this.loadGlobe();
     this.ui.show(view);
     this.refreshPanels();
     if (view === "hole") this.ui.digArea.focus({ preventScroll: true });
+  }
+
+  private ensureSection(): SectionScene {
+    if (!this.section) {
+      this.section = new SectionScene(this.quality, this.stage.environment());
+      this.section.setDepth(scoopsToMeters(this.reconciler.displayed));
+    }
+    return this.section;
+  }
+
+  /**
+   * Build the Cut and compile its shaders while the browser is idle after the first frames, so
+   * the first switch to it doesn't stall on texture generation, uploads and shader compiles.
+   */
+  private prewarmSection(): void {
+    const build = () => {
+      if (this.section) return;
+      const section = this.ensureSection();
+      section.update(0);
+      this.stage.warm(section, this.activeView());
+    };
+    if ("requestIdleCallback" in window) window.requestIdleCallback(build, { timeout: 2500 });
+    else globalThis.setTimeout(build, 1500);
   }
 
   private loadGlobe(): Promise<void> {

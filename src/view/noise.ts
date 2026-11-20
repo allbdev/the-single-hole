@@ -66,8 +66,16 @@ export class ValueNoise {
   }
 }
 
+const rgbCache = new Map<string, [number, number, number]>();
+
+/** "#rrggbb" to [r, g, b]. Cached: texture loops call it per pixel. Don't mutate the result. */
 export function hexToRgb(hex: string): [number, number, number] {
-  return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)) as [number, number, number];
+  let rgb = rgbCache.get(hex);
+  if (!rgb) {
+    rgb = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)) as [number, number, number];
+    rgbCache.set(hex, rgb);
+  }
+  return rgb;
 }
 
 export function lerpRgb(

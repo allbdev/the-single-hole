@@ -140,6 +140,16 @@ export class Stage {
     };
   }
 
+  /**
+   * Draw `view` once off the record, then redraw `current` over it, so `view`'s textures are
+   * uploaded and its shaders compiled (for the same pipeline, depth of field included) before
+   * it's first shown. The redraw happens in the same task, so `view` never reaches the screen.
+   */
+  warm(view: View, current: View): void {
+    this.render(view);
+    this.render(current);
+  }
+
   /** Render a view and copy the frame (for the share card). */
   snapshot(view: View): HTMLCanvasElement {
     this.render(view);
