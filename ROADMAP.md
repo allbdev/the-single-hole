@@ -100,7 +100,7 @@
 46. [x] Per-IP caps alongside per-connection caps; connection cap per room; drop and count bad messages
 46a. [x] The line: past 10,000 players, newcomers wait in a FIFO line ("You're #N in line") instead of being refused, get in as players leave, keep their place across hibernation, and get no broadcasts while waiting (added 20 Nov 2026)
 47. [x] Abuse tests: oversized batches, floods, malformed JSON, many connections from one IP, replayed messages, a forged country
-48. [~] Deploy the room to the chosen platform (adapter in `server/adapters/`), client to a static host; deploy from CI on push to `main` (adapter, wrangler config and CI deploy job are ready and verified with `wrangler dev`; the first deploy needs your Cloudflare account)
+48. [x] Deploy the room to the chosen platform (adapter in `server/adapters/`), client to a static host; deploy from CI on push to `main` (live since 20 Nov 2026, at https://the-single-hole.vinicius-albuquerque.com.br)
 49. [~] Load test against the deployed room with k6: connections held, broadcast latency, where it breaks, what it costs; results in `load/` and the README (local Node room: 6,000 players at 34 ms p95, cap at 10,000; the deployed run needs the deploy)
 50. [~] Monitoring: an uptime check and the room's own counters (players, scoops/s, dropped messages), no personal data (`/health` reports players, scoops and dropped/bad messages with no personal data; the uptime check needs an account)
 51. [x] Performance budget in CI from `CLAUDE.md` (`npm run budget`: initial JS under 300 KB gz; a WebGL page's Lighthouse score is too noisy in CI, so run Lighthouse by hand before launch)
@@ -113,7 +113,7 @@
 
 ## Phase E · Launch
 
-54. [ ] Domain pointed at the static host; HTTPS; `[SEU DOMÍNIO]` on the share card replaced
+54. [x] Domain pointed at the static host; HTTPS; `[SEU DOMÍNIO]` on the share card replaced (`the-single-hole.vinicius-albuquerque.com.br`, a Worker custom domain; the share card prints the page's host; `og:url`/`og:image` absolute, 20 Nov 2026)
 55. [x] Posts: short clip of the hole and the share card, in English and PT-BR (`marketing/`) (posts in `marketing/posts/`, clips recorded from the game by `tools/marketing/clip.ts`)
 56. [ ] Playtest with 5+ people at once on phones; fix what confuses them
 57. [ ] Go public: repo, link, posts

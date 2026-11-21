@@ -1,17 +1,14 @@
 # What I need from you
 
 > Things only you can do (money, accounts, domains, people, hardware). Claude keeps this list current while working; newest items at the top of each section.
-> Last updated: 19 Nov 2026. The whole game is built and runs locally on Node and on Cloudflare's local runtime. What's left needs you: an account to deploy to, a domain, a phone, and people.
+> Last updated: 20 Nov 2026. The game is live at https://the-single-hole.vinicius-albuquerque.com.br (also at the old https://the-single-hole.alb-develloper.workers.dev; Cloudflare Workers Free plan; every push to `main` deploys after the tests pass). What's left needs you: an uptime check, a phone, and people.
 
 ## To go live (in this order)
 
-- [ ] **Cloudflare account** (free plan is enough to start). Then, in GitHub → the repo → Settings → Secrets and variables → Actions, add:
-  - `CLOUDFLARE_ACCOUNT_ID` (Cloudflare dashboard → Workers & Pages → right sidebar)
-  - `CLOUDFLARE_API_TOKEN` (My Profile → API Tokens → "Edit Cloudflare Workers" template)
-
-  The next push to `main` deploys automatically (`.github/workflows/ci.yml`, job `deploy`). Or deploy by hand once: `npx wrangler login` then `npm run deploy`. Tell me the `*.workers.dev` URL and I'll run the load test against it (roadmap 49).
-- [ ] **Domain** (roadmap 54). Buy one, add it to Cloudflare, and point it at the Worker (Workers → the-single-hole → Settings → Domains & Routes). The share card prints whatever host the page is on, so nothing to change in code.
-- [ ] **Uptime check** (roadmap 50): any free monitor (Cloudflare Health Checks, UptimeRobot, Better Stack) pinging `https://YOUR-DOMAIN/health` every few minutes.
+- [ ] **Load test against the live room** (roadmap 49): your call. A real k6 run uses up the Free plan's 100,000 daily Durable Object requests in minutes, so the game would refuse players until 00:00 UTC. Either run it right after a UTC midnight when nobody plays, or after moving to the $5 plan. Say when, and I'll run it and write up the numbers.
+- [x] **Cloudflare account** (20 Nov 2026): created, `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` saved as GitHub Actions secrets (token from the "Edit Cloudflare Workers" template, no expiration: revoke it in My Profile → API Tokens if it ever leaks). First deploy succeeded.
+- [x] **Domain** (20 Nov 2026): `the-single-hole.vinicius-albuquerque.com.br`, a subdomain of your portfolio's domain. The domain's DNS moved from Vercel to Cloudflare (nameservers changed at registro.br); the portfolio's records (`@` and `www`, CNAMEs to Vercel) are **DNS only** on purpose so Vercel keeps serving it and renewing its certificate. Edit your portfolio's DNS in Cloudflare from now on, not Vercel. The game's subdomain is a Worker custom domain in `wrangler.jsonc`.
+- [ ] **Uptime check** (roadmap 50): any free monitor (Cloudflare Health Checks, UptimeRobot, Better Stack) pinging `https://the-single-hole.vinicius-albuquerque.com.br/health` every few minutes.
 - [ ] **Steam link.** Dig to Japan's Steam page URL, when it exists: it goes in `src/config.ts` (`steamUrl`), and the landing shows the link. Hidden until then.
 
 ## Worth knowing (no action unless you want a change)

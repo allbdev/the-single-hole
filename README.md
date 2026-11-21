@@ -2,7 +2,7 @@
 
 > *One hole.* Everyone on the internet digs the same hole, from Brazil to Japan, with a spoon. One shared depth, live. Free, open source, played from a link, no login.
 
-**Status:** the whole game is built and runs locally, on Node or on Cloudflare's runtime (`wrangler dev`). Not deployed yet: that needs a Cloudflare account and a domain (see `TODO_FOR_YOU.md`).
+**Status:** live at **https://the-single-hole.vinicius-albuquerque.com.br** (one Cloudflare Worker plus one Durable Object, deployed from CI on every push to `main`). It also runs locally, on Node or on Cloudflare's runtime (`wrangler dev`).
 
 A browser game and a portfolio piece. The interesting problem is not the hole, it's the number: thousands of clients adding to one shared counter in real time, with optimistic updates, reconciliation, server-side rate limiting, persistence across restarts, and a load test that says where it breaks.
 
